@@ -30,7 +30,7 @@ class SpecificWorker : public GenericWorker
 {
 Q_OBJECT
 private:
-	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, AVANZANDO, PENSAR, CELEBRAR,IDLE};
+	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CELEBRAR,IDLE};
 	STATE estado;
 	float radGiro;
 	int marcaBusco, marcaFocus;
@@ -40,9 +40,8 @@ private:
 	RoboCompDifferentialRobot::TBaseState posRobot;
 	float angulo, velocidad;
 	QVec res, res2;
-	float expulsion;
 	InnerModel *inner;
-	QVec vectorMundo, vectorBase;
+	QVec vectorMundo, vectorBase, expulsion;
 	
 	struct infoPos
 	{
@@ -110,10 +109,9 @@ public slots:
 	void parar();
 	void avanzar();
 	void pensar();
-	void avanzando();
+	void acercarse();
 	void celebrar();
-	void convertirPuntoEje();
-	void pasarMarcaAlMundo();
+	void calcularDestino();
 };
 
 #endif
