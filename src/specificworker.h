@@ -34,11 +34,11 @@ private:
 	STATE estado;
 	float radGiro;
 	int marcaBusco, marcaFocus;
-	bool localizado;
+	bool localizado, enfocado;
 	int distanciaMarca;
 	int distanciaParada;
 	RoboCompDifferentialRobot::TBaseState posRobot;
-	float angulo, velocidad;
+	float angulo, velocidad, distancia;
 	QVec res, res2;
 	InnerModel *inner;
 	QVec vectorMundo, vectorBase, expulsion;

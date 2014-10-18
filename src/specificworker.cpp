@@ -32,7 +32,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	
 	inner = new InnerModel("/home/salabeta/robocomp/files/innermodel/betaWorld.xml");
 	differentialrobot_proxy->setSpeedBase(0,0);
-	estado = STATE::IDLE;
+	estado = STATE::GIRAR;
 	localizado = false;
 	
 	// distancia a la que me paro
@@ -45,6 +45,8 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 
 	// inicialización para que cuando empiece a buscar la primera vez sea random a derecha o izquierda
 	angulo = qrand()*2.f/RAND_MAX-1;
+	
+	enfocado = false;
 }
 
 /**
@@ -83,7 +85,12 @@ void SpecificWorker::compute( )
 			//qDebug() << "Celebrar";
 			celebrar(); break;
 		case STATE::IDLE: 
-			calcularDestino();
+			/*vectorMundo = inner->transform("world", "base");
+			qDebug() << "Base con inner en x->" << vectorMundo[0] << " z->" << vectorMundo[2];
+			vectorMundo = inner->transform("world", "camera");
+			qDebug() << "Camera con inner en x->" << vectorMundo[0] << " z->" << vectorMundo[2];
+			qDebug() << "Base con robot en x->" << posRobot.x << " z->" << posRobot.z;*/
+			expulsar();
 			//qDebug() << "Nada";
 			break;
 	};
@@ -124,12 +131,11 @@ bool SpecificWorker::expulsar()
 		{
 			//qDebug() << "Datos laser: dist->" << i.dist << " angle->" << i.angle;
 			j++;
-			expulsion[0] = expulsion[0] + sin(i.angle)*i.dist;
-			expulsion[1] = expulsion[1] + cos(i.angle)*i.dist;
-			//qDebug() << "Datos laser: " << i.dist << i.angle;
+			expulsion[0] = expulsion[0] + sin(i.angle)*(1/i.dist);
+			expulsion[1] = expulsion[1] + cos(i.angle)*(1/i.dist);
 			choque = true;
 		}
-		qDebug() << "Expulsion es: x->" << 1/expulsion[0] << " z->" << 1/expulsion[1] << " suma de " << j << "valores";
+		qDebug() << "Expulsion es: x->" << expulsion[0] << " z->" << expulsion[1] << " suma de " << j << "valores";
 	} catch (const Ice::Exception &ex) 
 	{
 		std::cout << ex << std::endl;
@@ -174,30 +180,39 @@ void SpecificWorker::avanzar()
 
 	calcularDestino();
 	qDebug() << "vector direccion es: "<<vectorBase[0]<<"-"<<vectorBase[2];
-	//expulsar();
-	//if (expulsar()){
-	//	vectorBase[0] = vectorBase[0] - expulsion[0];
-	//	vectorBase[1] = vectorBase[1] - expulsion[1];
-	//}
 	
-	angulo = 0.001*vectorBase[0];
-	
-	//if (angulo > 0.7)
-	//	angulo = 0.7;
-	velocidad = 0.5*vectorBase[2];
+	expulsar();
+	distancia = sqrt(vectorBase[0]*vectorBase[0]+vectorBase[2]*vectorBase[2]);
+
+	if (distancia > 1000)
+	{
+		angulo = 0.001*vectorBase[0] - expulsion[0]*50;
+		velocidad = 0.5*vectorBase[2] - expulsion[1]*1000;
+	}
+	else
+	{
+		angulo = 0.001*vectorBase[0];
+		velocidad = 0.5*vectorBase[2];
+	}
+	if (angulo > 0.5)
+		angulo = 0.5;
+	if (angulo < -0.5)
+		angulo = -0.5;
 	if (velocidad > 500)
 		velocidad = 500;
-	if((vectorBase[2] > 2000)&&(angulo > 0)){
+	/*if((vectorBase[2] > 2000)&&(angulo > 0)){
 		angulo = 0.2;
 		velocidad = 350;
 	}
 	if((vectorBase[2] > 2000)&&(angulo < 0)){
 		angulo = -0.2;
 		velocidad = 350;
-	}
+	}*/
+	qDebug() << "Velocidad->" << velocidad << " Angulo->" << angulo;
 	differentialrobot_proxy->setSpeedBase(velocidad, angulo);
+	qDebug() << "Distancia restante: " << distancia;
 	if((abs(vectorBase[0]) < 50) && (abs(vectorBase[2]) < 50))
-		estado = STATE::PENSAR;
+		estado = STATE::CELEBRAR;
 }
 
 void SpecificWorker::pensar()
@@ -234,21 +249,22 @@ void SpecificWorker::calcularDestino()
 {
 	if(tagslocal.existsId(marcaBusco, datosMarca))
 	{
+		qDebug() << "Veo Marca";
 		Rot2DC a(datosMarca.ry+M_PI);
 		res = a*(QVec::vec2(marcaRefer.tx,marcaRefer.tz) - QVec::vec2(datosMarca.tx,datosMarca.tz));
-		qDebug()<<"Calculo marca en: "<< res[0] << "-" << res[1];
-		vectorMundo = inner->transform("world", QVec::vec3(res[0], 0, res[1]), "camera");
-		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
+		//qDebug()<<"Calculo marca en: "<< res[0] << "-" << res[1];
+		vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "camera");
+		//qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
 		vectorBase = inner->transform("camera", vectorMundo, "world");
-		qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
+		//qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
+		enfocado = true;
 	}
-	/*
 	else{
-		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
+		qDebug() << "A Ciegas";
+		//qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
 		vectorBase = inner->transform("base", vectorMundo, "world");
-		qDebug()<<"Punto donde voy con transform: "<<vectorBase[0] << "-" << vectorBase[2];
+		//qDebug()<<"Punto donde voy con transform: "<<vectorBase[0] << "-" << vectorBase[2];
 	}
-	*/
 }
 
 bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
