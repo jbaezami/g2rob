@@ -41,7 +41,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	marcaBusco = 0;
 	
 	marcaRefer.tx = 0.f;
-	marcaRefer.tz = 600.f;
+	marcaRefer.tz = -600.f;
 
 	// inicialización para que cuando empiece a buscar la primera vez sea random a derecha o izquierda
 	angulo = qrand()*2.f/RAND_MAX-1;
@@ -87,9 +87,16 @@ void SpecificWorker::compute( )
 		case STATE::IDLE: 
 			if(tagslocal.existsId(marcaBusco, datosMarca))
 			{
-				Rot2DC a(datosMarca.ry+M_PI);
-				res = a*(QVec::vec2(marcaRefer.tx,marcaRefer.tz) - QVec::vec2(datosMarca.tx,datosMarca.tz));
-				qDebug() << "Punto: x->" << res[0] << " z->" << res[1];
+				QVec vector(6);
+				vector[0] = datosMarca.tx;
+				vector[1] = 0;
+				vector[2] = datosMarca.tz;
+				vector[3] = 0;
+				vector[4] = datosMarca.ry;
+				vector[5] = 0;
+				addTransformInnerModel("referencia", "camera", vector);
+				vectorMarca = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
+				qDebug() << "Punto: x->" << vectorMarca[0] << " z->" << vectorMarca[2];
 			}
 			//expulsar();
 			//qDebug() << "Nada";
@@ -189,7 +196,7 @@ void SpecificWorker::avanzar()
 	{
 		angulo = 0.001*vectorBase[0] - expulsion[0]*50; //Para marca pared
 		//angulo = 0.001*vectorBase[0] - expulsion[0]*120; //Para punto delante de marca
-		velocidad = 0.5*vectorBase[2] - expulsion[1]*1000;
+		velocidad = 0.5*vectorBase[2] - expulsion[1]*5000;
 	}
 	else
 	{
@@ -214,7 +221,7 @@ void SpecificWorker::avanzar()
 	differentialrobot_proxy->setSpeedBase(velocidad, angulo);
 	qDebug() << "Distancia restante: " << distancia;
 	if((abs(vectorBase[0]) < 50) && (abs(vectorBase[2]) < 50))
-		estado = STATE::CELEBRAR;
+		estado = STATE::PENSAR;
 }
 
 void SpecificWorker::pensar()
@@ -223,9 +230,9 @@ void SpecificWorker::pensar()
 	if(abs(datosMarca.ry)>0.01)
 	{
 		if(datosMarca.ry < 0)
-			differentialrobot_proxy->setSpeedBase(0,-0.05);
+			differentialrobot_proxy->setSpeedBase(0,-0.2);
 		else
-			differentialrobot_proxy->setSpeedBase(0,0.05);
+			differentialrobot_proxy->setSpeedBase(0,0.2);
 	}
 	else
 	{
@@ -254,12 +261,18 @@ void SpecificWorker::calcularDestino()
 		qDebug() << "Veo Marca";
 		Rot2DC a(datosMarca.ry+M_PI);
 		res = a*(QVec::vec2(marcaRefer.tx,marcaRefer.tz) - QVec::vec2(datosMarca.tx,datosMarca.tz));
-		
-		addTransformInnerModel("referencia", "camera", QVec::vec6(datosMarca.tx,0,datosMarca.tz,0,datosMarca.ry,0));
-		vectorMarca = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
+		QVec vector(6);
+		vector[0] = datosMarca.tx;
+		vector[1] = 0;
+		vector[2] = datosMarca.tz;
+		vector[3] = 0;
+		vector[4] = datosMarca.ry;
+		vector[5] = 0;
+		addTransformInnerModel("referencia", "camera", vector);
+		vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
 		//qDebug()<<"Calculo marca en: "<< res[0] << "-" << res[1];
 		//vectorMundo = inner->transform("world", QVec::vec3(res[0], 0, res[1]), "camera");
-		vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "camera");
+		//vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "camera");
 		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
 		vectorBase = inner->transform("camera", vectorMundo, "world");
 		qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
