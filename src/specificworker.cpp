@@ -85,12 +85,13 @@ void SpecificWorker::compute( )
 			//qDebug() << "Celebrar";
 			celebrar(); break;
 		case STATE::IDLE: 
-			/*vectorMundo = inner->transform("world", "base");
-			qDebug() << "Base con inner en x->" << vectorMundo[0] << " z->" << vectorMundo[2];
-			vectorMundo = inner->transform("world", "camera");
-			qDebug() << "Camera con inner en x->" << vectorMundo[0] << " z->" << vectorMundo[2];
-			qDebug() << "Base con robot en x->" << posRobot.x << " z->" << posRobot.z;*/
-			expulsar();
+			if(tagslocal.existsId(marcaBusco, datosMarca))
+			{
+				Rot2DC a(datosMarca.ry+M_PI);
+				res = a*(QVec::vec2(marcaRefer.tx,marcaRefer.tz) - QVec::vec2(datosMarca.tx,datosMarca.tz));
+				qDebug() << "Punto: x->" << res[0] << " z->" << res[1];
+			}
+			//expulsar();
 			//qDebug() << "Nada";
 			break;
 	};
@@ -186,7 +187,8 @@ void SpecificWorker::avanzar()
 
 	if (distancia > 1000)
 	{
-		angulo = 0.001*vectorBase[0] - expulsion[0]*50;
+		angulo = 0.001*vectorBase[0] - expulsion[0]*50; //Para marca pared
+		//angulo = 0.001*vectorBase[0] - expulsion[0]*120; //Para punto delante de marca
 		velocidad = 0.5*vectorBase[2] - expulsion[1]*1000;
 	}
 	else
@@ -252,20 +254,36 @@ void SpecificWorker::calcularDestino()
 		qDebug() << "Veo Marca";
 		Rot2DC a(datosMarca.ry+M_PI);
 		res = a*(QVec::vec2(marcaRefer.tx,marcaRefer.tz) - QVec::vec2(datosMarca.tx,datosMarca.tz));
+		
+		addTransformInnerModel("referencia", "camera", QVec::vec6(datosMarca.tx,0,datosMarca.tz,0,datosMarca.ry,0));
+		vectorMarca = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
 		//qDebug()<<"Calculo marca en: "<< res[0] << "-" << res[1];
+		//vectorMundo = inner->transform("world", QVec::vec3(res[0], 0, res[1]), "camera");
 		vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "camera");
-		//qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
+		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
 		vectorBase = inner->transform("camera", vectorMundo, "world");
-		//qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
+		qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
 		enfocado = true;
 	}
 	else{
 		qDebug() << "A Ciegas";
-		//qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
+		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
 		vectorBase = inner->transform("base", vectorMundo, "world");
-		//qDebug()<<"Punto donde voy con transform: "<<vectorBase[0] << "-" << vectorBase[2];
+		qDebug()<<"Punto donde voy con transform: "<<vectorBase[0] << "-" << vectorBase[2];
 	}
 }
+
+void SpecificWorker::addTransformInnerModel(const QString &name, const QString &parent, const QVec &pose6D)
+{//pose6D vector con tx,ty,tx,0,ry,0 del aprilTags parent es el nombre del padre camera y name el nombre que le quiero dar
+		InnerModelNode *nodeParent = inner->getNode(parent);
+		if( inner->getNode(name) == NULL)
+		{
+			InnerModelTransform *node = inner->newTransform(name, "static", nodeParent, 0, 0, 0, 0, 0, 0, 0);
+			nodeParent->addChild(node);
+		}
+		inner->updateTransformValues(name, pose6D.x(), pose6D.y(), pose6D.z(), pose6D.rx(), pose6D.ry(), pose6D.rz());	
+}
+
 
 bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 {

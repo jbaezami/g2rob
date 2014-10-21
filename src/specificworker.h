@@ -41,7 +41,7 @@ private:
 	float angulo, velocidad, distancia;
 	QVec res, res2;
 	InnerModel *inner;
-	QVec vectorMundo, vectorBase, expulsion;
+	QVec vectorMarca, vectorMundo, vectorBase, expulsion;
 	
 	struct infoPos
 	{
@@ -112,6 +112,7 @@ public slots:
 	void acercarse();
 	void celebrar();
 	void calcularDestino();
+	void addTransformInnerModel(const QString &name, const QString &parent, const QVec &pose6D);
 };
 
 #endif
