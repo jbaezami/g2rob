@@ -32,7 +32,7 @@ static const uint qt_meta_data_SpecificWorker[] = {
  // slots: signature, parameters, type, tag, flags
       16,   15,   15,   15, 0x0a,
       31,   15,   26,   15, 0x0a,
-      49,   15,   26,   15, 0x0a,
+      49,   15,   15,   15, 0x0a,
       60,   15,   15,   15, 0x0a,
       68,   15,   15,   15, 0x0a,
       78,   15,   15,   15, 0x0a,
@@ -64,8 +64,7 @@ void SpecificWorker::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _
         case 0: _t->compute(); break;
         case 1: { bool _r = _t->comprobarChoque();
             if (_a[0]) *reinterpret_cast< bool*>(_a[0]) = _r; }  break;
-        case 2: { bool _r = _t->expulsar();
-            if (_a[0]) *reinterpret_cast< bool*>(_a[0]) = _r; }  break;
+        case 2: _t->expulsar(); break;
         case 3: _t->girar(); break;
         case 4: _t->girando(); break;
         case 5: _t->parar(); break;

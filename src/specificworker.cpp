@@ -29,24 +29,25 @@
 
 SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mprx, parent)	
 {
-	
+	//innerModel que utilizamos
 	inner = new InnerModel("/home/salabeta/robocomp/files/innermodel/betaWorld.xml");
+	//ponemos la velocidad del robot a 0
 	differentialrobot_proxy->setSpeedBase(0,0);
+	//estado del robot
 	estado = STATE::GIRAR;
-	localizado = false;
-	
 	// distancia a la que me paro
 	distanciaParada = 800;
-	
+	// marca que quiero localizar
 	marcaBusco = 0;
-	
+	// posicion respecto a la marca a la que quiero ir
 	marcaRefer.tx = 0.f;
 	marcaRefer.tz = -600.f;
-
-	// inicialización para que cuando empiece a buscar la primera vez sea random a derecha o izquierda
-	angulo = qrand()*2.f/RAND_MAX-1;
-	
+	// si he captado datos de la marca o no
 	enfocado = false;
+	// temporizador
+	reloj.start();
+	// intervalo para aplicar al reloj aleatorio para que la espera sea aleatoria no un valor fijo
+	intervalo = qrand()*2200.f/RAND_MAX + 4000;
 }
 
 /**
@@ -58,9 +59,12 @@ SpecificWorker::~SpecificWorker()
 }
 void SpecificWorker::compute( )
 {
+	//obtengo los datos de la posicion del robot
 	differentialrobot_proxy->getBaseState(posRobot);
+	//ajustamos los valores de la base para los calculos de transformacion
 	inner->updateTransformValues("base", posRobot.x , 0, posRobot.z, 0, posRobot.alpha, 0);
 	
+	//elegimos el estado del robot y actuamos segun el que este
 	switch(estado)
 	{
 		case STATE::GIRAR:
@@ -85,25 +89,14 @@ void SpecificWorker::compute( )
 			//qDebug() << "Celebrar";
 			celebrar(); break;
 		case STATE::IDLE: 
-			if(tagslocal.existsId(marcaBusco, datosMarca))
-			{
-				QVec vector(6);
-				vector[0] = datosMarca.tx;
-				vector[1] = 0;
-				vector[2] = datosMarca.tz;
-				vector[3] = 0;
-				vector[4] = datosMarca.ry;
-				vector[5] = 0;
-				addTransformInnerModel("referencia", "camera", vector);
-				vectorMarca = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
-				qDebug() << "Punto: x->" << vectorMarca[0] << " z->" << vectorMarca[2];
-			}
-			//expulsar();
+			//estado para las pruebas;
 			//qDebug() << "Nada";
 			break;
 	};
 }
 
+// modulo que comprueba los valores del laser que esten frente al robot (angulo entre 1.2 y -1.2)
+// y aquellos que devuelvan un valor de 400 avisa que posible choque
 bool SpecificWorker::comprobarChoque(){
 	bool choque = false;
 	TLaserData laser_data = laser_proxy->getLaserData();
@@ -113,7 +106,7 @@ bool SpecificWorker::comprobarChoque(){
 		{
 			if ((i.dist < 400)&&(i.angle < 1.2)&&(i.angle > -1.2))
 			{
-				qDebug() << "Datos laser: " << i.dist << i.angle;
+				//qDebug() << "Datos laser: " << i.dist << i.angle;
 				differentialrobot_proxy->stopBase();
 				choque = true;
 				break;
@@ -126,9 +119,11 @@ bool SpecificWorker::comprobarChoque(){
 	return choque;
 }
 
-bool SpecificWorker::expulsar()
+// modulo que realiza la inversa de las distancias obtenidas por el laser
+// calcula las componentes y las agrega a un vector que define la fuerza de repulsión
+// que generan los obstaculos
+void SpecificWorker::expulsar()
 {
-	bool choque = false;
 	TLaserData laser_data = laser_proxy->getLaserData();
 	int j = 0;
 	expulsion[0] = 0;
@@ -137,22 +132,28 @@ bool SpecificWorker::expulsar()
 	{
 		for(auto i:laser_data)
 		{
-			//qDebug() << "Datos laser: dist->" << i.dist << " angle->" << i.angle;
-			j++;
-			expulsion[0] = expulsion[0] + sin(i.angle)*(1/i.dist);
-			expulsion[1] = expulsion[1] + cos(i.angle)*(1/i.dist);
-			choque = true;
+			if(i.dist < 4000)
+			{
+				//qDebug() << "Datos laser: dist->" << i.dist << " angle->" << i.angle;
+				j++;
+				// calculo las componentes x y z de los vectores de repulsion invertidos
+				// invertidos para que cuanto mas cerca esté el obstaculo afecte más
+				expulsion[0] = expulsion[0] + sin(i.angle)*(1/i.dist);
+				expulsion[1] = expulsion[1] + cos(i.angle)*(1/i.dist);
+			}
 		}
-		qDebug() << "Expulsion es: x->" << expulsion[0] << " z->" << expulsion[1] << " suma de " << j << "valores";
+		//qDebug() << "Expulsion es: x->" << expulsion[0] << " z->" << expulsion[1] << " suma de " << j << "valores";
 	} catch (const Ice::Exception &ex) 
 	{
 		std::cout << ex << std::endl;
 	}
-	return choque;
 }
 
+// modulo que gira a un lado o a otro
 void SpecificWorker::girar()
 {
+	// inicialización para que cuando empiece a buscar la primera vez sea random a derecha o izquierda
+	angulo = qrand()*2.f/RAND_MAX-1;
 	if(angulo>0)
 	{
 		radGiro = -0.6;
@@ -167,12 +168,21 @@ void SpecificWorker::girar()
 	}
 }
 
+// busco la marca para dejar de girar cuando la localice
 void SpecificWorker::girando()
 {
 	if(tagslocal.existsId(marcaBusco, datosMarca))
 		estado = STATE::PARAR;
+	else
+	{
+		// si llevo demasiado tiempo girando me muevo a otro lado
+		if (intervalo < reloj.elapsed()){
+			qDebug() << "Quiero salir!!!";
+		}
+	}
 }
 
+// paro el robot, si la marca está localizada avanzo, si se ha perdido vuelvo a buscarla
 void SpecificWorker::parar()
 {
 	differentialrobot_proxy->setSpeedBase(0,0);
@@ -183,56 +193,58 @@ void SpecificWorker::parar()
 		estado = STATE::GIRAR;
 }
 
+// avanzo hacia la marca
 void SpecificWorker::avanzar()
 {
-
+	// calculo la posicion a la que debo moverme
 	calcularDestino();
-	qDebug() << "vector direccion es: "<<vectorBase[0]<<"-"<<vectorBase[2];
-	
+	//qDebug() << "vector direccion es: "<<vectorBase[0]<<"-"<<vectorBase[2];
+	// calculo las fuerzas de repulsion
 	expulsar();
+	// calculo la distancia a la que se encuentra la marca
 	distancia = sqrt(vectorBase[0]*vectorBase[0]+vectorBase[2]*vectorBase[2]);
 
+	// si la marca esta lejos calculo la expulsion
+	// si la marca esta cerca se ignora la expulsion porque las paredes 
+	// anulan la fuerza de atraccion al estar muy cerca
 	if (distancia > 1000)
 	{
-		angulo = 0.001*vectorBase[0] - expulsion[0]*50; //Para marca pared
-		//angulo = 0.001*vectorBase[0] - expulsion[0]*120; //Para punto delante de marca
-		velocidad = 0.5*vectorBase[2] - expulsion[1]*5000;
+		angulo = 0.001*vectorBase[0] - expulsion[0]*35; //Para marca pared
+		velocidad = 0.5*vectorBase[2] - expulsion[1]*9000;
 	}
 	else
 	{
 		angulo = 0.001*vectorBase[0];
 		velocidad = 0.5*vectorBase[2];
 	}
+	
+	// ajusto los angulos y velocidades para evitar giros bruscos y velocidades exageradas
 	if (angulo > 0.5)
 		angulo = 0.5;
 	if (angulo < -0.5)
 		angulo = -0.5;
 	if (velocidad > 500)
 		velocidad = 500;
-	/*if((vectorBase[2] > 2000)&&(angulo > 0)){
-		angulo = 0.2;
-		velocidad = 350;
-	}
-	if((vectorBase[2] > 2000)&&(angulo < 0)){
-		angulo = -0.2;
-		velocidad = 350;
-	}*/
-	qDebug() << "Velocidad->" << velocidad << " Angulo->" << angulo;
+	//qDebug() << "Velocidad->" << velocidad << " Angulo->" << angulo;
+	// asigno la velocidad y angulo de giro al robot
 	differentialrobot_proxy->setSpeedBase(velocidad, angulo);
-	qDebug() << "Distancia restante: " << distancia;
+	//qDebug() << "Distancia restante: " << distancia;
+	
+	//compruebo si estoy sobre la marca para parar y acercarme
 	if((abs(vectorBase[0]) < 50) && (abs(vectorBase[2]) < 50))
 		estado = STATE::PENSAR;
 }
 
+// giro para ajustar la marca al centro de la camara
 void SpecificWorker::pensar()
 {
 	tagslocal.existsId(marcaBusco, datosMarca);
 	if(abs(datosMarca.ry)>0.01)
 	{
 		if(datosMarca.ry < 0)
-			differentialrobot_proxy->setSpeedBase(0,-0.2);
+			differentialrobot_proxy->setSpeedBase(0,-0.12);
 		else
-			differentialrobot_proxy->setSpeedBase(0,0.2);
+			differentialrobot_proxy->setSpeedBase(0,0.12);
 	}
 	else
 	{
@@ -241,6 +253,7 @@ void SpecificWorker::pensar()
 	}
 }
 
+//me acerco a la marca hasta estar pegado
 void SpecificWorker::acercarse()
 {
 	if(!tagslocal.existsId(marcaBusco, datosMarca)){
@@ -248,19 +261,21 @@ void SpecificWorker::acercarse()
 	}
 }
 
+// paro y celebro que he llegado
 void SpecificWorker::celebrar()
 {
 	differentialrobot_proxy->stopBase();
 	qDebug() << "He llegado!";
 }
 
+// calculo el destino al que va el robot
 void SpecificWorker::calcularDestino()
 {
+	// if: 		-veo la marca- 	obtengo los datos de la marca y los actualizo
+	// else: 	-a ciegas- 		con los datos de memoria calculo la nueva posicion de la marca respecto al robot
 	if(tagslocal.existsId(marcaBusco, datosMarca))
 	{
-		qDebug() << "Veo Marca";
-		Rot2DC a(datosMarca.ry+M_PI);
-		res = a*(QVec::vec2(marcaRefer.tx,marcaRefer.tz) - QVec::vec2(datosMarca.tx,datosMarca.tz));
+		//qDebug() << "Veo Marca";
 		QVec vector(6);
 		vector[0] = datosMarca.tx;
 		vector[1] = 0;
@@ -268,26 +283,31 @@ void SpecificWorker::calcularDestino()
 		vector[3] = 0;
 		vector[4] = datosMarca.ry;
 		vector[5] = 0;
+		// añado un nodo al innermodel con la posicion de la marca que he visto
 		addTransformInnerModel("referencia", "camera", vector);
+		// calculo donde esta en el mundo el punto que esta frente a la marca localizada
+		// guardo esta información para utilizarla cuando no la vea
 		vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
 		//qDebug()<<"Calculo marca en: "<< res[0] << "-" << res[1];
-		//vectorMundo = inner->transform("world", QVec::vec3(res[0], 0, res[1]), "camera");
-		//vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "camera");
-		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
+		//qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
+		// calculo el vector de atraccion del robot a la marca a la que me dirijo
 		vectorBase = inner->transform("camera", vectorMundo, "world");
-		qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
+		//qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
 		enfocado = true;
 	}
 	else{
-		qDebug() << "A Ciegas";
-		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
+		//qDebug() << "A Ciegas";
+		//qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
+		// calculo el vector de atraccion del robot a la marca a la que me dirijo guardada en memoria
 		vectorBase = inner->transform("base", vectorMundo, "world");
-		qDebug()<<"Punto donde voy con transform: "<<vectorBase[0] << "-" << vectorBase[2];
+		//qDebug()<<"Punto donde voy con transform: "<<vectorBase[0] << "-" << vectorBase[2];
 	}
 }
 
+// metodo para la creacion de un nodo temporal nuevo en el innermodel con la posicion de la marca
 void SpecificWorker::addTransformInnerModel(const QString &name, const QString &parent, const QVec &pose6D)
-{//pose6D vector con tx,ty,tx,0,ry,0 del aprilTags parent es el nombre del padre camera y name el nombre que le quiero dar
+{
+	//pose6D vector con tx,ty,tx,0,ry,0 del aprilTags parent es el nombre del padre camera y name el nombre que le quiero dar
 		InnerModelNode *nodeParent = inner->getNode(parent);
 		if( inner->getNode(name) == NULL)
 		{
@@ -297,13 +317,13 @@ void SpecificWorker::addTransformInnerModel(const QString &name, const QString &
 		inner->updateTransformValues(name, pose6D.x(), pose6D.y(), pose6D.z(), pose6D.rx(), pose6D.ry(), pose6D.rz());	
 }
 
-
 bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 {
 	timer.start(Period);
 	return true;
 };
 
+// metodo para actualizar los datos del apriltags
 void SpecificWorker::newAprilTag(const tagsList& tags)
 {
 	tagslocal.update(tags);

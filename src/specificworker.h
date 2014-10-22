@@ -30,18 +30,30 @@ class SpecificWorker : public GenericWorker
 {
 Q_OBJECT
 private:
+	//estados posibles del posRobot
+	// GIRAR: gira hacia uno de los dos lados
+	// GIRANDO: trata de localizar la marca mientras gira
+	// PARA: para el robot cuando tienen la marca fijada
+	// AVANZAR: va hacia la marca
+	// PENSAR: situado en la marca, trata de ajustar el centro de la marca
+	// ACERCARSE: se acerca lo maximo posible a la marca
+	// CELEBRAR: celebra el exito
+	// IDLE: estado para pruebas
 	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CELEBRAR,IDLE};
 	STATE estado;
-	float radGiro;
-	int marcaBusco, marcaFocus;
-	bool localizado, enfocado;
-	int distanciaMarca;
-	int distanciaParada;
+	// variables para la marca que busco, la distancia a la marca y la distancia a la que paro
+	int marcaBusco, distanciaMarca, distanciaParada;
+	// bool para saber si tengo ya datos de la marca
+	bool enfocado;
+	// posicion del robot
 	RoboCompDifferentialRobot::TBaseState posRobot;
-	float angulo, velocidad, distancia;
-	QVec res, res2;
+	// variables para giros, velocidad y distancia
+	float radGiro, angulo, velocidad, distancia, intervalo;
 	InnerModel *inner;
-	QVec vectorMarca, vectorMundo, vectorBase, expulsion;
+	//vectores de transformacion para mover un punto al mundo, a la base y vector de expulsion
+	QVec vectorMundo, vectorBase, expulsion;
+	// reloj para las temporizaciones
+	QTime reloj;
 	
 	struct infoPos
 	{
@@ -103,7 +115,7 @@ public:
 public slots:
  	void compute(); 
 	bool comprobarChoque();
-	bool expulsar();
+	void expulsar();
 	void girar();
 	void girando();
 	void parar();
