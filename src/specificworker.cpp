@@ -38,7 +38,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	// distancia a la que me paro
 	distanciaParada = 800;
 	// marca que quiero localizar
-	marcaBusco = 0;
+	marcaBusco = 10;
 	// posicion respecto a la marca a la que quiero ir
 	marcaRefer.tx = 0.f;
 	marcaRefer.tz = -600.f;
@@ -177,7 +177,7 @@ void SpecificWorker::girando()
 	{
 		// si llevo demasiado tiempo girando me muevo a otro lado
 		if (intervalo < reloj.elapsed()){
-			qDebug() << "Quiero salir!!!";
+			//qDebug() << "Quiero salir!!!";
 		}
 	}
 }
@@ -287,7 +287,9 @@ void SpecificWorker::calcularDestino()
 		addTransformInnerModel("referencia", "camera", vector);
 		// calculo donde esta en el mundo el punto que esta frente a la marca localizada
 		// guardo esta información para utilizarla cuando no la vea
-		vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
+		//vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
+		//para ir a la marca directamente
+		vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "camera");
 		//qDebug()<<"Calculo marca en: "<< res[0] << "-" << res[1];
 		//qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
 		// calculo el vector de atraccion del robot a la marca a la que me dirijo
