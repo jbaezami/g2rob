@@ -33,15 +33,15 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	inner = new InnerModel("/home/salabeta/robocomp/files/innermodel/betaWorld.xml");
 	//ponemos la velocidad del robot a 0
 	differentialrobot_proxy->setSpeedBase(0,0);
-	//estado del robot
-	estado = STATE::GIRAR;
+	//estado inicial del robot
+	estado = STATE::IDLE;
 	// distancia a la que me paro
 	distanciaParada = 800;
 	// marca que quiero localizar
 	marcaBusco = 10;
 	// posicion respecto a la marca a la que quiero ir
 	marcaRefer.tx = 0.f;
-	marcaRefer.tz = -600.f;
+	marcaRefer.tz = 800.f;
 	// si he captado datos de la marca o no
 	enfocado = false;
 	// temporizador
@@ -68,29 +68,41 @@ void SpecificWorker::compute( )
 	switch(estado)
 	{
 		case STATE::GIRAR:
-			//qDebug() << "Girar";
-			girar(); break;
+			qDebug() << "Girar";
+			girar(); 
+			break;
 		case STATE::GIRANDO:
-			//qDebug() << "Girando";
-			girando(); break;
+			qDebug() << "Girando";
+			girando(); 
+			break;
 		case STATE::PARAR:
-			//qDebug() << "Parar";
-			parar(); break;
+			qDebug() << "Parar";
+			parar(); 
+			break;
 		case STATE::AVANZAR:
-			//qDebug() << "Avanzar";
-			avanzar(); break;
+			qDebug() << "Avanzar";
+			avanzar(); 
+			break;
 		case STATE::PENSAR:
+			qDebug() << "Pensar";
 			pensar();
 			break;
 		case STATE::ACERCARSE:
+			qDebug() << "Acercarse";
 			acercarse();
 			break;
+		case STATE::GANCHO:
+			qDebug() << "Gancho";
+			gancho(); 
+			break;
 		case STATE::CELEBRAR:
-			//qDebug() << "Celebrar";
-			celebrar(); break;
+			qDebug() << "Celebrar";
+			celebrar(); 
+			break;
 		case STATE::IDLE: 
-			//estado para las pruebas;
-			//qDebug() << "Nada";
+// 			estado para las pruebas;
+			calcularDestino();
+			qDebug() << "Nada";
 			break;
 	};
 }
@@ -214,7 +226,7 @@ void SpecificWorker::avanzar()
 	}
 	else
 	{
-		angulo = 0.001*vectorBase[0];
+		angulo = 0.003*vectorBase[0];
 		velocidad = 0.5*vectorBase[2];
 	}
 	
@@ -231,14 +243,15 @@ void SpecificWorker::avanzar()
 	//qDebug() << "Distancia restante: " << distancia;
 	
 	//compruebo si estoy sobre la marca para parar y acercarme
-	if((abs(vectorBase[0]) < 50) && (abs(vectorBase[2]) < 50))
-		estado = STATE::PENSAR;
+	if((abs(vectorBase[0]) < 25) && (abs(vectorBase[2]) < 50))
+		estado = STATE::GANCHO;
 }
 
 // giro para ajustar la marca al centro de la camara
 void SpecificWorker::pensar()
 {
 	tagslocal.existsId(marcaBusco, datosMarca);
+	qDebug() << "ry marca es ->" << datosMarca.ry;
 	if(abs(datosMarca.ry)>0.01)
 	{
 		if(datosMarca.ry < 0)
@@ -259,6 +272,13 @@ void SpecificWorker::acercarse()
 	if(!tagslocal.existsId(marcaBusco, datosMarca)){
 		estado = STATE::CELEBRAR;
 	}
+}
+
+//acciono el gancho para coger la caja
+void SpecificWorker::gancho()
+{
+	differentialrobot_proxy->setSpeedBase(0,0);
+	qDebug() << "Cojo la caja";
 }
 
 // paro y celebro que he llegado
@@ -287,11 +307,10 @@ void SpecificWorker::calcularDestino()
 		addTransformInnerModel("referencia", "camera", vector);
 		// calculo donde esta en el mundo el punto que esta frente a la marca localizada
 		// guardo esta información para utilizarla cuando no la vea
-		//vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
+		vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
 		//para ir a la marca directamente
-		vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "camera");
-		//qDebug()<<"Calculo marca en: "<< res[0] << "-" << res[1];
-		//qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
+		//vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "camera");
+		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
 		// calculo el vector de atraccion del robot a la marca a la que me dirijo
 		vectorBase = inner->transform("camera", vectorMundo, "world");
 		//qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];

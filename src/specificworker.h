@@ -39,7 +39,7 @@ private:
 	// ACERCARSE: se acerca lo maximo posible a la marca
 	// CELEBRAR: celebra el exito
 	// IDLE: estado para pruebas
-	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CELEBRAR,IDLE};
+	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CELEBRAR, GANCHO, IDLE};
 	STATE estado;
 	// variables para la marca que busco, la distancia a la marca y la distancia a la que paro
 	int marcaBusco, distanciaMarca, distanciaParada;
@@ -54,6 +54,7 @@ private:
 	QVec vectorMundo, vectorBase, expulsion;
 	// reloj para las temporizaciones
 	QTime reloj;
+	// boolean que indica si ya tengo la marca a la que voy en memoria o no
 	
 	struct infoPos
 	{
@@ -122,6 +123,7 @@ public slots:
 	void avanzar();
 	void pensar();
 	void acercarse();
+	void gancho();
 	void celebrar();
 	void calcularDestino();
 	void addTransformInnerModel(const QString &name, const QString &parent, const QVec &pose6D);
