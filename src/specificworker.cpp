@@ -26,7 +26,7 @@
 /**
 * \brief Default constructor
 */
-
+//otro aprilTags en otra pestaña vinculado al otro puerto
 SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mprx, parent)	
 {
 	//innerModel que utilizamos
@@ -41,7 +41,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	marcaBusco = 10;
 	// posicion respecto a la marca a la que quiero ir
 	marcaRefer.tx = 0.f;
-	marcaRefer.tz = 800.f;
+	marcaRefer.tz = -600.f;
 	// si he captado datos de la marca o no
 	enfocado = false;
 	// temporizador
@@ -219,32 +219,33 @@ void SpecificWorker::avanzar()
 	// si la marca esta lejos calculo la expulsion
 	// si la marca esta cerca se ignora la expulsion porque las paredes 
 	// anulan la fuerza de atraccion al estar muy cerca
-	if (distancia > 1000)
-	{
-		angulo = 0.001*vectorBase[0] - expulsion[0]*35; //Para marca pared
-		velocidad = 0.5*vectorBase[2] - expulsion[1]*9000;
-	}
-	else
-	{
+// 	if (distancia > 1000)
+// 	{
+// 		angulo = 0.001*vectorBase[0] - expulsion[0]*35; //Para marca pared
+// 		velocidad = 0.5*vectorBase[2] - expulsion[1]*9000;
+// 	}
+// 	else
+// 	{
 		angulo = 0.003*vectorBase[0];
 		velocidad = 0.5*vectorBase[2];
-	}
+// 	}
 	
 	// ajusto los angulos y velocidades para evitar giros bruscos y velocidades exageradas
 	if (angulo > 0.5)
 		angulo = 0.5;
 	if (angulo < -0.5)
 		angulo = -0.5;
-	if (velocidad > 500)
-		velocidad = 500;
+	if (velocidad > 250)
+		velocidad = 250;
 	//qDebug() << "Velocidad->" << velocidad << " Angulo->" << angulo;
 	// asigno la velocidad y angulo de giro al robot
 	differentialrobot_proxy->setSpeedBase(velocidad, angulo);
 	//qDebug() << "Distancia restante: " << distancia;
 	
 	//compruebo si estoy sobre la marca para parar y acercarme
+	qDebug() << "VOY A: x->"<<vectorBase[0]<<" z->"<<vectorBase[2];
 	if((abs(vectorBase[0]) < 25) && (abs(vectorBase[2]) < 50))
-		estado = STATE::GANCHO;
+		estado = STATE::PENSAR;
 }
 
 // giro para ajustar la marca al centro de la camara
@@ -303,17 +304,18 @@ void SpecificWorker::calcularDestino()
 		vector[3] = 0;
 		vector[4] = datosMarca.ry;
 		vector[5] = 0;
+		qDebug()<<"Marca en el mundo esta en: "<< datosMarca.tx << "-" << datosMarca.tz;
 		// añado un nodo al innermodel con la posicion de la marca que he visto
-		addTransformInnerModel("referencia", "camera", vector);
+		//addTransformInnerModel("referencia", "camera", vector);
 		// calculo donde esta en el mundo el punto que esta frente a la marca localizada
 		// guardo esta información para utilizarla cuando no la vea
-		vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
+		//vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
 		//para ir a la marca directamente
-		//vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "camera");
+		vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "camera");
 		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
 		// calculo el vector de atraccion del robot a la marca a la que me dirijo
 		vectorBase = inner->transform("camera", vectorMundo, "world");
-		//qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
+		qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
 		enfocado = true;
 	}
 	else{
