@@ -1,10 +1,11 @@
+import "/robocomp/interfaces/IDSLs/JointMotor.idsl";
 import "/robocomp/interfaces/IDSLs/AprilTags.idsl";
 import "/robocomp/interfaces/IDSLs/DifferentialRobot.idsl";
 import "/robocomp/interfaces/IDSLs/Laser.idsl";
 
 Component navegacionComp{
 	Communications{
-	  requires DifferentialRobot, Laser;
+	  requires DifferentialRobot, Laser, JointMotor;
 	  subscribesTo AprilTags;
 	};
 	language Cpp;

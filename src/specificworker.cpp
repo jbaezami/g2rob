@@ -41,13 +41,27 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	marcaBusco = 10;
 	// posicion respecto a la marca a la que quiero ir
 	marcaRefer.tx = 0.f;
-	marcaRefer.tz = -600.f;
+	marcaRefer.tz = 600.f;
 	// si he captado datos de la marca o no
 	enfocado = false;
 	// temporizador
 	reloj.start();
 	// intervalo para aplicar al reloj aleatorio para que la espera sea aleatoria no un valor fijo
 	intervalo = qrand()*2200.f/RAND_MAX + 4000;
+	
+	// configuro una posicion para el brazo hacia atrás recogido
+	recogido.push_back(std::make_pair<std::string, float>("shoulder_right_1", 3.14));
+	recogido.push_back(std::make_pair<std::string, float>("shoulder_right_2", -0.7));
+	recogido.push_back(std::make_pair<std::string, float>("elbow_right", 1));
+	recogido.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.1));
+	
+	//configuro una posicion para el brazo para delante para coger cajas
+	coger.push_back(std::make_pair<std::string, float>("shoulder_right_1", 0));
+	coger.push_back(std::make_pair<std::string, float>("shoulder_right_2", -0.7));
+	coger.push_back(std::make_pair<std::string, float>("elbow_right", 1));
+	coger.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.1));
+	
+	posicionBrazo(recogido);
 }
 
 /**
@@ -101,11 +115,30 @@ void SpecificWorker::compute( )
 			break;
 		case STATE::IDLE: 
 // 			estado para las pruebas;
-			calcularDestino();
+			//calcularDestino();
 			qDebug() << "Nada";
 			break;
 	};
 }
+
+void SpecificWorker::posicionBrazo(const TPose &lista)
+{
+	MotorGoalPosition posicion;
+	try 
+	{
+		for(auto i:lista)
+		{
+			posicion.name = i.first;
+			posicion.position = i.second;
+			posicion.maxSpeed = 1.f;
+			jointmotor_proxy->setPosition(posicion);
+		}
+	} catch (const Ice::Exception &ex) 
+	{
+		std::cout << ex << std::endl;
+	}
+}
+
 
 // modulo que comprueba los valores del laser que esten frente al robot (angulo entre 1.2 y -1.2)
 // y aquellos que devuelvan un valor de 400 avisa que posible choque
@@ -245,7 +278,7 @@ void SpecificWorker::avanzar()
 	//compruebo si estoy sobre la marca para parar y acercarme
 	qDebug() << "VOY A: x->"<<vectorBase[0]<<" z->"<<vectorBase[2];
 	if((abs(vectorBase[0]) < 25) && (abs(vectorBase[2]) < 50))
-		estado = STATE::PENSAR;
+		estado = STATE::CELEBRAR;
 }
 
 // giro para ajustar la marca al centro de la camara
@@ -306,15 +339,15 @@ void SpecificWorker::calcularDestino()
 		vector[5] = 0;
 		qDebug()<<"Marca en el mundo esta en: "<< datosMarca.tx << "-" << datosMarca.tz;
 		// añado un nodo al innermodel con la posicion de la marca que he visto
-		//addTransformInnerModel("referencia", "camera", vector);
+		addTransformInnerModel("referencia", "camera", vector);
 		// calculo donde esta en el mundo el punto que esta frente a la marca localizada
 		// guardo esta información para utilizarla cuando no la vea
-		//vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
+		vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
 		//para ir a la marca directamente
-		vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "camera");
+		//vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "base");
 		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
 		// calculo el vector de atraccion del robot a la marca a la que me dirijo
-		vectorBase = inner->transform("camera", vectorMundo, "world");
+		vectorBase = inner->transform("base", vectorMundo, "world");
 		qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
 		enfocado = true;
 	}

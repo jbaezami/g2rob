@@ -30,6 +30,9 @@ class SpecificWorker : public GenericWorker
 {
 Q_OBJECT
 private:
+	
+	typedef std::vector<std::pair <std::string, float> > TPose;
+
 	//estados posibles del posRobot
 	// GIRAR: gira hacia uno de los dos lados
 	// GIRANDO: trata de localizar la marca mientras gira
@@ -55,6 +58,8 @@ private:
 	// reloj para las temporizaciones
 	QTime reloj;
 	// boolean que indica si ya tengo la marca a la que voy en memoria o no
+	TPose recogido;
+	TPose coger;
 	
 	struct infoPos
 	{
@@ -106,6 +111,7 @@ private:
 	};
 	tagslocalT tagslocal;
 	tag datosMarca;
+	void posicionBrazo(const TPose &lista);
 
 public:
 	SpecificWorker(MapPrx& mprx, QObject *parent = 0);	
