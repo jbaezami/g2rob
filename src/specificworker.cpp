@@ -34,9 +34,9 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	//ponemos la velocidad del robot a 0
 	differentialrobot_proxy->setSpeedBase(0,0);
 	//estado inicial del robot
-	estado = STATE::IDLE;
+	estado = STATE::GIRAR;
 	// distancia a la que me paro
-	distanciaParada = 800;
+	distanciaParada = 1600;
 	// marca que quiero localizar
 	marcaBusco = 10;
 	// posicion respecto a la marca a la que quiero ir
@@ -51,15 +51,19 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	
 	// configuro una posicion para el brazo hacia atrás recogido
 	recogido.push_back(std::make_pair<std::string, float>("shoulder_right_1", 3.14));
-	recogido.push_back(std::make_pair<std::string, float>("shoulder_right_2", -0.7));
-	recogido.push_back(std::make_pair<std::string, float>("elbow_right", 1));
-	recogido.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.1));
+	recogido.push_back(std::make_pair<std::string, float>("shoulder_right_2", -1.4));
+	recogido.push_back(std::make_pair<std::string, float>("elbow_right", 2.4));
+	recogido.push_back(std::make_pair<std::string, float>("wrist_right_2", -1));
+	recogido.push_back(std::make_pair<std::string, float>("finger_right_1", 1));
+	recogido.push_back(std::make_pair<std::string, float>("finger_right_2", -1));
 	
 	//configuro una posicion para el brazo para delante para coger cajas
 	coger.push_back(std::make_pair<std::string, float>("shoulder_right_1", 0));
 	coger.push_back(std::make_pair<std::string, float>("shoulder_right_2", -0.7));
 	coger.push_back(std::make_pair<std::string, float>("elbow_right", 1));
 	coger.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.1));
+	coger.push_back(std::make_pair<std::string, float>("finger_right_1", 0));
+	coger.push_back(std::make_pair<std::string, float>("finger_right_2", 0));
 	
 	posicionBrazo(recogido);
 }
@@ -245,7 +249,7 @@ void SpecificWorker::avanzar()
 	calcularDestino();
 	//qDebug() << "vector direccion es: "<<vectorBase[0]<<"-"<<vectorBase[2];
 	// calculo las fuerzas de repulsion
-	expulsar();
+	//expulsar();
 	// calculo la distancia a la que se encuentra la marca
 	distancia = sqrt(vectorBase[0]*vectorBase[0]+vectorBase[2]*vectorBase[2]);
 
@@ -259,15 +263,13 @@ void SpecificWorker::avanzar()
 // 	}
 // 	else
 // 	{
-		angulo = 0.003*vectorBase[0];
+		angulo = 0.001*vectorBase[0];
 		velocidad = 0.5*vectorBase[2];
 // 	}
 	
 	// ajusto los angulos y velocidades para evitar giros bruscos y velocidades exageradas
 	if (angulo > 0.5)
 		angulo = 0.5;
-	if (angulo < -0.5)
-		angulo = -0.5;
 	if (velocidad > 250)
 		velocidad = 250;
 	//qDebug() << "Velocidad->" << velocidad << " Angulo->" << angulo;
@@ -279,33 +281,38 @@ void SpecificWorker::avanzar()
 	qDebug() << "VOY A: x->"<<vectorBase[0]<<" z->"<<vectorBase[2];
 	if((abs(vectorBase[0]) < 25) && (abs(vectorBase[2]) < 50))
 		estado = STATE::CELEBRAR;
+	
+	if (distanciaParada > distancia)
+		estado = STATE::PENSAR;
 }
 
 // giro para ajustar la marca al centro de la camara
 void SpecificWorker::pensar()
 {
 	tagslocal.existsId(marcaBusco, datosMarca);
-	qDebug() << "ry marca es ->" << datosMarca.ry;
-	if(abs(datosMarca.ry)>0.01)
+	qDebug() << "tx marca es ->" << datosMarca.tx;
+	if(abs(datosMarca.tx)>1)
 	{
-		if(datosMarca.ry < 0)
-			differentialrobot_proxy->setSpeedBase(0,-0.12);
+		if(datosMarca.tx<0)
+			differentialrobot_proxy->setSpeedBase(0,-0.02);
 		else
-			differentialrobot_proxy->setSpeedBase(0,0.12);
+			differentialrobot_proxy->setSpeedBase(0,0.02);
 	}
 	else
 	{
-		differentialrobot_proxy->setSpeedBase(400, 0);
-		estado = STATE::ACERCARSE;
+		posicionBrazo(coger);
+		differentialrobot_proxy->setSpeedBase(0, 0);
+		qDebug() << "Ajustado";
+ 		estado = STATE::ACERCARSE;
 	}
 }
 
 //me acerco a la marca hasta estar pegado
 void SpecificWorker::acercarse()
 {
-	if(!tagslocal.existsId(marcaBusco, datosMarca)){
-		estado = STATE::CELEBRAR;
-	}
+	differentialrobot_proxy->setSpeedBase(50, 0);
+// 	if(!tagslocal.existsId(marcaBusco, datosMarca))
+// 		estado = STATE::CELEBRAR;
 }
 
 //acciono el gancho para coger la caja
