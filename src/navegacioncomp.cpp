@@ -77,12 +77,14 @@
 #include "specificmonitor.h"
 #include "commonbehaviorI.h"
 #include <apriltagsI.h>
+#include <apriltagsI.h>
 
 // Includes for remote proxy example
 // #include <Remote.h>
 #include <Laser.h>
 #include <JointMotor.h>
 #include <DifferentialRobot.h>
+#include <BodyInverseKinematics.h>
 
 
 // User includes here
@@ -94,6 +96,7 @@ using namespace RoboCompAprilTags;
 using namespace RoboCompLaser;
 using namespace RoboCompJointMotor;
 using namespace RoboCompDifferentialRobot;
+using namespace RoboCompBodyInverseKinematics;
 
 
 class navegacionComp : public RoboComp::Application
@@ -129,6 +132,7 @@ int navegacionComp::run(int argc, char* argv[])
 	LaserPrx laser_proxy;
 JointMotorPrx jointmotor_proxy;
 DifferentialRobotPrx differentialrobot_proxy;
+BodyInverseKinematicsPrx bodyinversekinematics_proxy;
 
 
 	string proxy;
@@ -189,7 +193,18 @@ DifferentialRobotPrx differentialrobot_proxy;
 		return EXIT_FAILURE;
 	}
 	rInfo("DifferentialRobotProxy initialized Ok!");
-	mprx["DifferentialRobotProxy"] = (::IceProxy::Ice::Object*)(&differentialrobot_proxy);
+	mprx["DifferentialRobotProxy"] = (::IceProxy::Ice::Object*)(&differentialrobot_proxy);//Remote server proxy creation example
+	try
+	{
+		bodyinversekinematics_proxy = BodyInverseKinematicsPrx::uncheckedCast( communicator()->stringToProxy( getProxyString("BodyInverseKinematicsProxy") ) );
+	}
+	catch(const Ice::Exception& ex)
+	{
+		cout << "[" << PROGRAM_NAME << "]: Exception: " << ex;
+		return EXIT_FAILURE;
+	}
+	rInfo("BodyInverseKinematicsProxy initialized Ok!");
+	mprx["BodyInverseKinematicsProxy"] = (::IceProxy::Ice::Object*)(&bodyinversekinematics_proxy);
 	IceStorm::TopicManagerPrx topicManager = IceStorm::TopicManagerPrx::checkedCast(communicator()->propertyToProxy("TopicManager.Proxy"));
 	
 	
@@ -210,26 +225,47 @@ DifferentialRobotPrx differentialrobot_proxy;
 		adapterCommonBehavior->add(commonbehaviorI, communicator()->stringToIdentity("commonbehavior"));
 		adapterCommonBehavior->activate();
 		// Server adapter creation and publication
-    	Ice::ObjectAdapterPtr AprilTags_adapter = communicator()->createObjectAdapter("AprilTagsTopic");
-    	AprilTagsPtr apriltagsI_ = new AprilTagsI(worker);
-    	Ice::ObjectPrx apriltags_proxy = AprilTags_adapter->addWithUUID(apriltagsI_)->ice_oneway();
-    	IceStorm::TopicPrx apriltags_topic;
-    	if(!apriltags_topic){
+    	Ice::ObjectAdapterPtr AprilTags0_adapter = communicator()->createObjectAdapter("AprilTags0Topic");
+    	AprilTagsPtr apriltags0I_ = new AprilTags0I(worker);
+    	Ice::ObjectPrx apriltags0_proxy = AprilTags0_adapter->addWithUUID(apriltags0I_)->ice_oneway();
+    	IceStorm::TopicPrx apriltags0_topic;
+    	if(!apriltags0_topic){
 	    	try {
-	    		apriltags_topic = topicManager->create("AprilTags");
+	    		apriltags0_topic = topicManager->create("AprilTags0");
 	    	}
 	    	catch (const IceStorm::TopicExists&) {
 	    	  	//Another client created the topic
 	    	  	try{
-	       			apriltags_topic = topicManager->retrieve("AprilTags");
+	       			apriltags0_topic = topicManager->retrieve("AprilTags0");
 	    	  	}catch(const IceStorm::NoSuchTopic&){
 	    	  	  	//Error. Topic does not exist
 				}
 	    	}
 	    	IceStorm::QoS qos;
-	      	apriltags_topic->subscribeAndGetPublisher(qos, apriltags_proxy);
+	      	apriltags0_topic->subscribeAndGetPublisher(qos, apriltags0_proxy);
     	}
-    	AprilTags_adapter->activate();
+    	AprilTags0_adapter->activate();
+    	// Server adapter creation and publication
+    	Ice::ObjectAdapterPtr AprilTags1_adapter = communicator()->createObjectAdapter("AprilTags1Topic");
+    	AprilTagsPtr apriltags1I_ = new AprilTags1I(worker);
+    	Ice::ObjectPrx apriltags1_proxy = AprilTags1_adapter->addWithUUID(apriltags1I_)->ice_oneway();
+    	IceStorm::TopicPrx apriltags1_topic;
+    	if(!apriltags1_topic){
+	    	try {
+	    		apriltags1_topic = topicManager->create("AprilTags1");
+	    	}
+	    	catch (const IceStorm::TopicExists&) {
+	    	  	//Another client created the topic
+	    	  	try{
+	       			apriltags1_topic = topicManager->retrieve("AprilTags1");
+	    	  	}catch(const IceStorm::NoSuchTopic&){
+	    	  	  	//Error. Topic does not exist
+				}
+	    	}
+	    	IceStorm::QoS qos;
+	      	apriltags1_topic->subscribeAndGetPublisher(qos, apriltags1_proxy);
+    	}
+    	AprilTags1_adapter->activate();
     	// Server adapter creation and publication
 		cout << SERVER_FULL_NAME " started" << endl;
 

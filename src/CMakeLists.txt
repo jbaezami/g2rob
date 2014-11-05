@@ -13,6 +13,7 @@ SET ( SOURCES
   ${SOURCES}
   navegacioncomp.cpp
   apriltagsI.cpp
+apriltagsI.cpp
 
   genericmonitor.cpp
   commonbehaviorI.cpp
@@ -25,6 +26,7 @@ SET ( SOURCES
 SET ( HEADERS
   ${HEADERS}
   apriltagsI.h
+apriltagsI.h
 
   genericmonitor.h
   commonbehaviorI.h
@@ -32,7 +34,7 @@ SET ( HEADERS
 )
 #ROBOCOMP
 ROBOCOMP_INITIALIZE( $ENV{ROBOCOMP}/ )
-ROBOCOMP_WRAP_ICE( CommonBehavior  AprilTags Laser  DifferentialRobot JointMotor)
+ROBOCOMP_WRAP_ICE( CommonBehavior  AprilTags Laser DifferentialRobot JointMotor  BodyInverseKinematics)
 SET (EXECUTABLE_OUTPUT_PATH ../bin)
 
 # Qt4

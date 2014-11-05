@@ -34,7 +34,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	//ponemos la velocidad del robot a 0
 	differentialrobot_proxy->setSpeedBase(0,0);
 	//estado inicial del robot
-	estado = STATE::GIRAR;
+	estado = STATE::MOVERBRAZO;
 	// distancia a la que me paro
 	distanciaParada = 1600;
 	// marca que quiero localizar
@@ -121,8 +121,23 @@ void SpecificWorker::compute( )
 // 			estado para las pruebas;
 			//calcularDestino();
 			qDebug() << "Nada";
+			tagslocal1.existsId(marcaBusco, datosMarca);
+			qDebug() << "tx:" << datosMarca.tx;
+			break;
+		case STATE::MOVERBRAZO:
+			moverBrazo(0,0,200);
+			estado = STATE::IDLE;
 			break;
 	};
+}
+
+void SpecificWorker::moverBrazo(float x, float y, float z)
+{
+	RoboCompBodyInverseKinematics::Axis axis;
+	axis.x = x;
+	axis.y = y;
+	axis.z = z;
+	bodyinversekinematics_proxy->advanceAlongAxis("ARM", axis, 0.0f);
 }
 
 void SpecificWorker::posicionBrazo(const TPose &lista)
@@ -387,7 +402,13 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 };
 
 // metodo para actualizar los datos del apriltags
-void SpecificWorker::newAprilTag(const tagsList& tags)
+void SpecificWorker::newAprilTag0(const tagsList& tags)
 {
 	tagslocal.update(tags);
+}
+
+// metodo para actualizar los datos del apriltags
+void SpecificWorker::newAprilTag1(const tagsList& tags)
+{
+	tagslocal1.update(tags);
 }

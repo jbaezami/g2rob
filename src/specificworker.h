@@ -42,7 +42,7 @@ private:
 	// ACERCARSE: se acerca lo maximo posible a la marca
 	// CELEBRAR: celebra el exito
 	// IDLE: estado para pruebas
-	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CELEBRAR, GANCHO, IDLE};
+	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CELEBRAR, GANCHO, IDLE, MOVERBRAZO};
 	STATE estado;
 	// variables para la marca que busco, la distancia a la marca y la distancia a la que paro
 	int marcaBusco, distanciaMarca, distanciaParada;
@@ -109,15 +109,17 @@ private:
 		}
 		std::vector<tag> tags;
 	};
-	tagslocalT tagslocal;
+	tagslocalT tagslocal, tagslocal1;
 	tag datosMarca;
 	void posicionBrazo(const TPose &lista);
+	void moverBrazo ( float x, float y, float z);
 
 public:
 	SpecificWorker(MapPrx& mprx, QObject *parent = 0);	
 	~SpecificWorker();
 	bool setParams(RoboCompCommonBehavior::ParameterList params);
-	void  newAprilTag(const tagsList& tags);
+	void  newAprilTag0(const tagsList& tags);
+	void  newAprilTag1(const tagsList& tags);
 
 public slots:
  	void compute(); 
