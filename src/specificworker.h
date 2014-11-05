@@ -112,7 +112,7 @@ private:
 	tagslocalT tagslocal, tagslocal1;
 	tag datosMarca;
 	void posicionBrazo(const TPose &lista);
-	void moverBrazo ( float x, float y, float z);
+	void moverBrazo ( float x, float y, float z, float dist);
 
 public:
 	SpecificWorker(MapPrx& mprx, QObject *parent = 0);	

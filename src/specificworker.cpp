@@ -65,7 +65,8 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	coger.push_back(std::make_pair<std::string, float>("finger_right_1", 0));
 	coger.push_back(std::make_pair<std::string, float>("finger_right_2", 0));
 	
-	posicionBrazo(recogido);
+	posicionBrazo(coger);
+	sleep(2);
 }
 
 /**
@@ -80,7 +81,7 @@ void SpecificWorker::compute( )
 	//obtengo los datos de la posicion del robot
 	differentialrobot_proxy->getBaseState(posRobot);
 	//ajustamos los valores de la base para los calculos de transformacion
-	inner->updateTransformValues("base", posRobot.x , 0, posRobot.z, 0, posRobot.alpha, 0);
+	inner->updateTransformValues("robot", posRobot.x , 0, posRobot.z, 0, posRobot.alpha, 0);
 	
 	//elegimos el estado del robot y actuamos segun el que este
 	switch(estado)
@@ -121,23 +122,29 @@ void SpecificWorker::compute( )
 // 			estado para las pruebas;
 			//calcularDestino();
 			qDebug() << "Nada";
-			tagslocal1.existsId(marcaBusco, datosMarca);
-			qDebug() << "tx:" << datosMarca.tx;
 			break;
 		case STATE::MOVERBRAZO:
-			moverBrazo(0,0,200);
+			moverBrazo(0,0,1,50);
+			usleep(300000);
+			moverBrazo(0,0,1,50);
+			usleep(300000);
+			moverBrazo(0,0,1,50);
+			usleep(300000);
+			moverBrazo(0,0,1,50);
+			
 			estado = STATE::IDLE;
+			qFatal("fary");
 			break;
 	};
 }
 
-void SpecificWorker::moverBrazo(float x, float y, float z)
+void SpecificWorker::moverBrazo(float x, float y, float z, float dist)
 {
 	RoboCompBodyInverseKinematics::Axis axis;
 	axis.x = x;
 	axis.y = y;
 	axis.z = z;
-	bodyinversekinematics_proxy->advanceAlongAxis("ARM", axis, 0.0f);
+	bodyinversekinematics_proxy->advanceAlongAxis("ARM", axis, dist);
 }
 
 void SpecificWorker::posicionBrazo(const TPose &lista)
@@ -366,10 +373,10 @@ void SpecificWorker::calcularDestino()
 		// guardo esta información para utilizarla cuando no la vea
 		vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
 		//para ir a la marca directamente
-		//vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "base");
+		//vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "robot");
 		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
 		// calculo el vector de atraccion del robot a la marca a la que me dirijo
-		vectorBase = inner->transform("base", vectorMundo, "world");
+		vectorBase = inner->transform("robot", vectorMundo, "world");
 		qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
 		enfocado = true;
 	}
@@ -377,7 +384,7 @@ void SpecificWorker::calcularDestino()
 		//qDebug() << "A Ciegas";
 		//qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
 		// calculo el vector de atraccion del robot a la marca a la que me dirijo guardada en memoria
-		vectorBase = inner->transform("base", vectorMundo, "world");
+		vectorBase = inner->transform("robot", vectorMundo, "world");
 		//qDebug()<<"Punto donde voy con transform: "<<vectorBase[0] << "-" << vectorBase[2];
 	}
 }
