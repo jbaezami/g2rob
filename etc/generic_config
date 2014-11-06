@@ -2,8 +2,6 @@
 # This property is used to configure the endpoints of the subscriber adapter.
 #
 CommonBehavior.Endpoints=tcp -p 11266
-AprilTags0Topic.Endpoints=tcp -p 12233
-AprilTags1Topic.Endpoints=tcp -p 12234
 
 # Remote servers proxies example
 #RemoteProxy = remote:tcp -h remotehost -p 10001
@@ -11,9 +9,6 @@ AprilTags1Topic.Endpoints=tcp -p 12234
 LaserProxy = laser:tcp -h localhost -p 10003
 JointMotorProxy = jointmotor:tcp -h localhost -p 20000
 DifferentialRobotProxy = differentialrobot:tcp -h localhost -p 10004
+GetAprilTags0Proxy = getapriltags:tcp -h localhost -p 12210
+GetAprilTags1Proxy = getapriltags:tcp -h localhost -p 13210
 BodyInverseKinematicsProxy = bodyinversekinematics:tcp -h localhost -p 10220
-
-#
-# This property is used by the clients to connect to IceStorm.
-#
-TopicManager.Proxy=IceStorm/TopicManager:default -p 9999

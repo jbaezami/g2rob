@@ -34,7 +34,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	//ponemos la velocidad del robot a 0
 	differentialrobot_proxy->setSpeedBase(0,0);
 	//estado inicial del robot
-	estado = STATE::MOVERBRAZO;
+	estado = STATE::IDLE;
 	// distancia a la que me paro
 	distanciaParada = 1600;
 	// marca que quiero localizar
@@ -83,6 +83,17 @@ void SpecificWorker::compute( )
 	//ajustamos los valores de la base para los calculos de transformacion
 	inner->updateTransformValues("robot", posRobot.x , 0, posRobot.z, 0, posRobot.alpha, 0);
 	
+	try
+	{
+		RoboCompGetAprilTags::listaMarcas tl0, tl1;
+		tagslocal.update(getapriltags0_proxy->checkMarcas());
+		tagslocal1.update(getapriltags1_proxy->checkMarcas());
+	}
+	catch( const Ice::Exception &ex)
+	{ std::cout << ex << std::endl;}
+	
+	
+	
 	//elegimos el estado del robot y actuamos segun el que este
 	switch(estado)
 	{
@@ -121,19 +132,12 @@ void SpecificWorker::compute( )
 		case STATE::IDLE: 
 // 			estado para las pruebas;
 			//calcularDestino();
-			qDebug() << "Nada";
-			break;
-		case STATE::MOVERBRAZO:
-			moverBrazo(0,0,1,50);
-			usleep(300000);
-			moverBrazo(0,0,1,50);
-			usleep(300000);
-			moverBrazo(0,0,1,50);
-			usleep(300000);
-			moverBrazo(0,0,1,50);
+			if(tagslocal.existsId(marcaBusco, datosMarca))
+				qDebug() << " tx-> " << datosMarca.tx;
 			
-			estado = STATE::IDLE;
-			qFatal("fary");
+			if(tagslocal1.existsId(marcaBusco, datosMarca))
+				qDebug() << " tx-> " << datosMarca.tx;
+			qDebug() << "Nada";
 			break;
 	};
 }
@@ -341,6 +345,7 @@ void SpecificWorker::acercarse()
 void SpecificWorker::gancho()
 {
 	differentialrobot_proxy->setSpeedBase(0,0);
+	moverBrazo(0,0,1,50);
 	qDebug() << "Cojo la caja";
 }
 
@@ -407,10 +412,11 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 	timer.start(Period);
 	return true;
 };
-
+/*
 // metodo para actualizar los datos del apriltags
 void SpecificWorker::newAprilTag0(const tagsList& tags)
 {
+	qDebug() << "hola0";
 	tagslocal.update(tags);
 }
 
@@ -418,4 +424,6 @@ void SpecificWorker::newAprilTag0(const tagsList& tags)
 void SpecificWorker::newAprilTag1(const tagsList& tags)
 {
 	tagslocal1.update(tags);
-}
+	qDebug() << "hola1";
+	
+}*/

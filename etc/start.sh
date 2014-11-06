@@ -37,6 +37,13 @@ qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.runCommand './apriltagsc
 qdbus org.kde.yakuake /yakuake/tabs org.kde.yakuake.setTabTitle $sess 'apriltags2'
 sleep 1
 
+# lokiArmComp
+qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.addSession
+sess=`qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.activeSessionId`
+qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.runCommand 'cd /home/salabeta/robocomp/components/beta-robotica-class/inversekinematicsComp/bin
+'
+qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.runCommand './lokiarmcomp --Ice.Config=config'
+qdbus org.kde.yakuake /yakuake/tabs org.kde.yakuake.setTabTitle $sess 'lokiArm'
 
 # navigationAgent
 qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.addSession

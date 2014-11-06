@@ -42,7 +42,7 @@ private:
 	// ACERCARSE: se acerca lo maximo posible a la marca
 	// CELEBRAR: celebra el exito
 	// IDLE: estado para pruebas
-	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CELEBRAR, GANCHO, IDLE, MOVERBRAZO};
+	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CELEBRAR, GANCHO, IDLE};
 	STATE estado;
 	// variables para la marca que busco, la distancia a la marca y la distancia a la que paro
 	int marcaBusco, distanciaMarca, distanciaParada;
@@ -83,10 +83,39 @@ private:
 			tx = tx_*1000; tz = tz_*1000; ry = ry_; id = id_;
 		}
 	};
+// 	struct tagslocalT
+// 	{
+// 		QMutex mutex;
+// 		void update( const tagsList &t)
+// 		{
+// 			QMutexLocker m(&mutex);
+// 			tags.clear();
+// 			for(auto i: t)
+// 			{
+// 				tag myT(i.id, i.tx, i.tz, i.ry);
+// 				tags.push_back(myT);
+// 			}
+// 		};
+// 		bool existsId(int id_, tag &tt)
+// 		{
+// 			QMutexLocker m(&mutex);
+// 			for(auto i: tags)
+// 			if( i.id == id_)
+// 			{
+// 				tt=i;
+// 				return true;
+// 			}
+// 			return false;
+// 		}
+// 		std::vector<tag> tags;
+// 	};
+// 	tagslocalT tagslocal, tagslocal1;
+// 	tag datosMarca;
+	
 	struct tagslocalT
 	{
 		QMutex mutex;
-		void update( const tagsList &t)
+		void update( const RoboCompGetAprilTags::listaMarcas &t)
 		{
 			QMutexLocker m(&mutex);
 			tags.clear();
@@ -111,6 +140,8 @@ private:
 	};
 	tagslocalT tagslocal, tagslocal1;
 	tag datosMarca;
+	
+	
 	void posicionBrazo(const TPose &lista);
 	void moverBrazo ( float x, float y, float z, float dist);
 
@@ -118,8 +149,8 @@ public:
 	SpecificWorker(MapPrx& mprx, QObject *parent = 0);	
 	~SpecificWorker();
 	bool setParams(RoboCompCommonBehavior::ParameterList params);
-	void  newAprilTag0(const tagsList& tags);
-	void  newAprilTag1(const tagsList& tags);
+// 	void  newAprilTag0(const tagsList& tags);
+// 	void  newAprilTag1(const tagsList& tags);
 
 public slots:
  	void compute(); 
