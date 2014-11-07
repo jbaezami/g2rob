@@ -360,7 +360,10 @@ void SpecificWorker::acercarse()
 		differentialrobot_proxy->setSpeedBase(datosMarcaBrazo.ty/2, 0);
 		qDebug() << "ty desde arriba:" << datosMarcaBrazo.ty;
 		if (abs(datosMarcaBrazo.ty) < 25)
+		{
+			differentialrobot_proxy->setSpeedBase(0,0);
 			estado = STATE::CENTRARBRAZO;
+		}
 	}
 	else
 		differentialrobot_proxy->setSpeedBase(50, 0);
@@ -370,21 +373,29 @@ void SpecificWorker::centrarBrazo()
 {
 	tagslocal1.existsId(marcaBusco, datosMarcaBrazo);
 	if(abs(datosMarcaBrazo.tx)>10)
-	{
-		differentialrobot_proxy->setSpeedBase(0, (datosMarcaBrazo.tx/1000));
+	{		
+		qDebug() << __FUNCTION__ <<  " muevo y espero " << datosMarcaBrazo.tx;
+		moverBrazo(1,0,0,datosMarcaBrazo.tx*0.8);
+		sleep(2);
 	}
 	else
-	{
-		differentialrobot_proxy->setSpeedBase(0, 0);
-		qDebug() << "Ajustado";
- 		estado = STATE::BAJARBRAZO;
-	}
+		estado = STATE::BAJARBRAZO;
+// 	if(abs(datosMarcaBrazo.tx)>10)
+// 	{
+// 		differentialrobot_proxy->setSpeedBase(0, (datosMarcaBrazo.tx/1000));
+// 	}
+// 	else
+// 	{
+// 		differentialrobot_proxy->setSpeedBase(0, 0);
+// 		qDebug() << "Ajustado";
+//  		estado = STATE::BAJARBRAZO;
+// 	}
 }
 
 void SpecificWorker::bajarBrazo()
 {
 	qDebug() << "tx->" << datosMarcaBrazo.tx << "ty->" << datosMarcaBrazo.ty << "tz->" << datosMarcaBrazo.tz;
-	moverBrazo(0,0,1,130);
+	moverBrazo(0,0,1,(datosMarcaBrazo.tz-200));
 	sleep(2);
 	qDebug() << "Cojo la caja";
 	posicionBrazo(cerrarMano);

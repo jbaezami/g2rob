@@ -76,11 +76,11 @@ private:
 	struct tag
 	{
 		int id;
-		float tx,ty, tz,ry;	
+		float tx,ty,tz,ry,rz;	
 		tag(){};
-		tag( int id_, float tx_, float ty_, float tz_, float ry_)
+		tag( int id_, float tx_, float ty_, float tz_, float ry_, float rz_)
 		{
-			tx = tx_*1000; ty = ty_ *1000; tz = tz_*1000; ry = ry_; id = id_;
+			tx = tx_*1000; ty = ty_ *1000; tz = tz_*1000; ry = ry_; rz = rz_; id = id_;
 		}
 	};
 // 	struct tagslocalT
@@ -121,7 +121,7 @@ private:
 			tags.clear();
 			for(auto i: t)
 			{
-				tag myT(i.id, i.tx, i.ty, i.tz, i.ry);
+				tag myT(i.id, i.tx, i.ty, i.tz, i.ry, i.rz);
 				tags.push_back(myT);
 			}
 		};
