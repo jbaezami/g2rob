@@ -34,7 +34,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	//ponemos la velocidad del robot a 0
 	differentialrobot_proxy->setSpeedBase(0,0);
 	//estado inicial del robot
-	estado = STATE::IDLE;
+	estado = STATE::GIRAR;
 	// distancia a la que me paro
 	distanciaParada = 1600;
 	// marca que quiero localizar
@@ -65,8 +65,17 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	coger.push_back(std::make_pair<std::string, float>("finger_right_1", 0));
 	coger.push_back(std::make_pair<std::string, float>("finger_right_2", 0));
 	
-	posicionBrazo(coger);
-	sleep(2);
+	//configuro una posicion para el brazo con mano cerrada para coger la caja
+	cerrarMano.push_back(std::make_pair<std::string, float>("finger_right_1", -0.5));
+	cerrarMano.push_back(std::make_pair<std::string, float>("finger_right_2", 0.5));
+	
+	//configuro una posicion para subir la caja
+	subirCaja.push_back(std::make_pair<std::string, float>("shoulder_right_1", 0));
+	subirCaja.push_back(std::make_pair<std::string, float>("shoulder_right_2", -0.7));
+	subirCaja.push_back(std::make_pair<std::string, float>("elbow_right", 1));
+	subirCaja.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.1));
+	
+	posicionBrazo(recogido);
 }
 
 /**
@@ -121,9 +130,13 @@ void SpecificWorker::compute( )
 			qDebug() << "Acercarse";
 			acercarse();
 			break;
-		case STATE::GANCHO:
-			qDebug() << "Gancho";
-			gancho(); 
+		case STATE::CENTRARBRAZO:
+			qDebug() << "Centrar Brazo";
+			centrarBrazo(); 
+			break;
+		case STATE::BAJARBRAZO:
+			qDebug() << "Bajar Brazo";
+			bajarBrazo();
 			break;
 		case STATE::CELEBRAR:
 			qDebug() << "Celebrar";
@@ -135,8 +148,12 @@ void SpecificWorker::compute( )
 			if(tagslocal.existsId(marcaBusco, datosMarca))
 				qDebug() << " tx-> " << datosMarca.tx;
 			
-			if(tagslocal1.existsId(marcaBusco, datosMarca))
-				qDebug() << " tx-> " << datosMarca.tx;
+			if(tagslocal1.existsId(marcaBusco, datosMarcaBrazo))
+			{
+				qDebug() << " tx-> " << datosMarcaBrazo.tx;
+				qDebug() << " ty-> " << datosMarcaBrazo.ty;
+				qDebug() << " tz-> " << datosMarcaBrazo.tz;
+			}
 			qDebug() << "Nada";
 			break;
 	};
@@ -319,10 +336,11 @@ void SpecificWorker::pensar()
 	qDebug() << "tx marca es ->" << datosMarca.tx;
 	if(abs(datosMarca.tx)>1)
 	{
-		if(datosMarca.tx<0)
-			differentialrobot_proxy->setSpeedBase(0,-0.02);
-		else
-			differentialrobot_proxy->setSpeedBase(0,0.02);
+		differentialrobot_proxy->setSpeedBase(0, (datosMarca.tx/2000));
+// 		if(datosMarca.tx<0)
+// 			differentialrobot_proxy->setSpeedBase(0,-0.02);
+// 		else
+// 			differentialrobot_proxy->setSpeedBase(0,0.02);
 	}
 	else
 	{
@@ -336,17 +354,41 @@ void SpecificWorker::pensar()
 //me acerco a la marca hasta estar pegado
 void SpecificWorker::acercarse()
 {
-	differentialrobot_proxy->setSpeedBase(50, 0);
-// 	if(!tagslocal.existsId(marcaBusco, datosMarca))
-// 		estado = STATE::CELEBRAR;
+	
+	if(tagslocal1.existsId(marcaBusco, datosMarcaBrazo))
+	{
+		differentialrobot_proxy->setSpeedBase(datosMarcaBrazo.ty/2, 0);
+		qDebug() << "ty desde arriba:" << datosMarcaBrazo.ty;
+		if (abs(datosMarcaBrazo.ty) < 25)
+			estado = STATE::CENTRARBRAZO;
+	}
+	else
+		differentialrobot_proxy->setSpeedBase(50, 0);
 }
 
-//acciono el gancho para coger la caja
-void SpecificWorker::gancho()
+void SpecificWorker::centrarBrazo()
 {
-	differentialrobot_proxy->setSpeedBase(0,0);
-	moverBrazo(0,0,1,50);
+	tagslocal1.existsId(marcaBusco, datosMarcaBrazo);
+	if(abs(datosMarcaBrazo.tx)>10)
+	{
+		differentialrobot_proxy->setSpeedBase(0, (datosMarcaBrazo.tx/1000));
+	}
+	else
+	{
+		differentialrobot_proxy->setSpeedBase(0, 0);
+		qDebug() << "Ajustado";
+ 		estado = STATE::BAJARBRAZO;
+	}
+}
+
+void SpecificWorker::bajarBrazo()
+{
+	qDebug() << "tx->" << datosMarcaBrazo.tx << "ty->" << datosMarcaBrazo.ty << "tz->" << datosMarcaBrazo.tz;
+	moverBrazo(0,0,1,130);
+	sleep(2);
 	qDebug() << "Cojo la caja";
+	posicionBrazo(cerrarMano);
+	estado = STATE::CELEBRAR;
 }
 
 // paro y celebro que he llegado
@@ -354,6 +396,10 @@ void SpecificWorker::celebrar()
 {
 	differentialrobot_proxy->stopBase();
 	qDebug() << "He llegado!";
+	sleep(4);
+	posicionBrazo(subirCaja);
+	sleep(2);
+	qFatal("Se acabo");
 }
 
 // calculo el destino al que va el robot

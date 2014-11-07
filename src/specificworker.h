@@ -42,7 +42,7 @@ private:
 	// ACERCARSE: se acerca lo maximo posible a la marca
 	// CELEBRAR: celebra el exito
 	// IDLE: estado para pruebas
-	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CELEBRAR, GANCHO, IDLE};
+	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CENTRARBRAZO, BAJARBRAZO, CELEBRAR, IDLE};
 	STATE estado;
 	// variables para la marca que busco, la distancia a la marca y la distancia a la que paro
 	int marcaBusco, distanciaMarca, distanciaParada;
@@ -58,16 +58,16 @@ private:
 	// reloj para las temporizaciones
 	QTime reloj;
 	// boolean que indica si ya tengo la marca a la que voy en memoria o no
-	TPose recogido;
-	TPose coger;
+	TPose recogido, coger, cerrarMano, subirCaja;
 	
 	struct infoPos
 	{
-		float tx, tz;
+		float tx, ty, tz;
 		infoPos(){};
-		infoPos( float tx_, float tz_)
+		infoPos( float tx_, float ty_, float tz_)
 		{
 			tx = tx_;
+			ty = ty_;
 			tz = tz_;
 		}
 	};
@@ -76,11 +76,11 @@ private:
 	struct tag
 	{
 		int id;
-		float tx,tz,ry;	
+		float tx,ty, tz,ry;	
 		tag(){};
-		tag( int id_, float tx_, float tz_, float ry_)
+		tag( int id_, float tx_, float ty_, float tz_, float ry_)
 		{
-			tx = tx_*1000; tz = tz_*1000; ry = ry_; id = id_;
+			tx = tx_*1000; ty = ty_ *1000; tz = tz_*1000; ry = ry_; id = id_;
 		}
 	};
 // 	struct tagslocalT
@@ -121,7 +121,7 @@ private:
 			tags.clear();
 			for(auto i: t)
 			{
-				tag myT(i.id, i.tx, i.tz, i.ry);
+				tag myT(i.id, i.tx, i.ty, i.tz, i.ry);
 				tags.push_back(myT);
 			}
 		};
@@ -139,7 +139,7 @@ private:
 		std::vector<tag> tags;
 	};
 	tagslocalT tagslocal, tagslocal1;
-	tag datosMarca;
+	tag datosMarca, datosMarcaBrazo;
 	
 	
 	void posicionBrazo(const TPose &lista);
@@ -162,7 +162,8 @@ public slots:
 	void avanzar();
 	void pensar();
 	void acercarse();
-	void gancho();
+	void centrarBrazo();
+	void bajarBrazo();
 	void celebrar();
 	void calcularDestino();
 	void addTransformInnerModel(const QString &name, const QString &parent, const QVec &pose6D);
