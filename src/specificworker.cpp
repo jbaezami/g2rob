@@ -357,13 +357,15 @@ void SpecificWorker::acercarse()
 	
 	if(tagslocal1.existsId(marcaBusco, datosMarcaBrazo))
 	{
-		differentialrobot_proxy->setSpeedBase(datosMarcaBrazo.ty/2, 0);
-		qDebug() << "ty desde arriba:" << datosMarcaBrazo.ty;
-		if (abs(datosMarcaBrazo.ty) < 25)
-		{
-			differentialrobot_proxy->setSpeedBase(0,0);
-			estado = STATE::CENTRARBRAZO;
-		}
+// 		differentialrobot_proxy->setSpeedBase(datosMarcaBrazo.ty/2, 0);
+// 		qDebug() << "ty desde arriba:" << datosMarcaBrazo.ty;
+// 		if (abs(datosMarcaBrazo.ty) < 25)
+// 		{
+// 			differentialrobot_proxy->setSpeedBase(0,0);
+// 			estado = STATE::CENTRARBRAZO;
+// 		}
+		differentialrobot_proxy->setSpeedBase(0, 0);
+		estado = STATE::CENTRARBRAZO;
 	}
 	else
 		differentialrobot_proxy->setSpeedBase(50, 0);
@@ -374,8 +376,14 @@ void SpecificWorker::centrarBrazo()
 	tagslocal1.existsId(marcaBusco, datosMarcaBrazo);
 	if(abs(datosMarcaBrazo.tx)>10)
 	{		
-		qDebug() << __FUNCTION__ <<  " muevo y espero " << datosMarcaBrazo.tx;
+		qDebug() << __FUNCTION__ <<  " muevo tx y espero " << datosMarcaBrazo.tx;
 		moverBrazo(1,0,0,datosMarcaBrazo.tx*0.8);
+		sleep(2);
+	}
+	else if (abs(datosMarcaBrazo.ty)>30)
+	{
+		qDebug() << __FUNCTION__ <<  " muevo ty y espero " << datosMarcaBrazo.ty;
+		moverBrazo(0,1,0,datosMarcaBrazo.ty*0.8);
 		sleep(2);
 	}
 	else
