@@ -54,64 +54,28 @@ private:
 	float radGiro, angulo, velocidad, distancia, intervalo;
 	InnerModel *inner;
 	//vectores de transformacion para mover un punto al mundo, a la base y vector de expulsion
-	QVec vectorMundo, vectorBase, expulsion;
+	QVec marcaRefer, vectorMundo, vectorBase, expulsion;
 	// reloj para las temporizaciones
 	QTime reloj;
 	// boolean que indica si ya tengo la marca a la que voy en memoria o no
-	TPose recogido, coger, cerrarMano, subirCaja;
-	
-	struct infoPos
-	{
-		float tx, ty, tz;
-		infoPos(){};
-		infoPos( float tx_, float ty_, float tz_)
-		{
-			tx = tx_;
-			ty = ty_;
-			tz = tz_;
-		}
-	};
-	infoPos marcaRefer;
+	TPose recogido, coger, cerrarMano, subirCaja, guardoCaja;
 	
 	struct tag
 	{
-		int id;
-		float tx,ty,tz,ry,rz;	
 		tag(){};
-		tag( int id_, float tx_, float ty_, float tz_, float ry_, float rz_)
+		tag( int id_, float tx_, float ty_, float tz_, float rx_, float ry_, float rz_)
 		{
-			tx = tx_*1000; ty = ty_ *1000; tz = tz_*1000; ry = ry_; rz = rz_; id = id_;
+			pos.resize(6);
+			id = id_;
+			pos[0] = tx_*1000; pos[1] = ty_ *1000; pos[2] = tz_*1000; pos[3] = rx_; pos[4] = ry_; pos[5]=rz_;
 		}
+		QVec getPos()
+		{
+			return pos;
+		}
+		int id;
+		QVec pos;
 	};
-// 	struct tagslocalT
-// 	{
-// 		QMutex mutex;
-// 		void update( const tagsList &t)
-// 		{
-// 			QMutexLocker m(&mutex);
-// 			tags.clear();
-// 			for(auto i: t)
-// 			{
-// 				tag myT(i.id, i.tx, i.tz, i.ry);
-// 				tags.push_back(myT);
-// 			}
-// 		};
-// 		bool existsId(int id_, tag &tt)
-// 		{
-// 			QMutexLocker m(&mutex);
-// 			for(auto i: tags)
-// 			if( i.id == id_)
-// 			{
-// 				tt=i;
-// 				return true;
-// 			}
-// 			return false;
-// 		}
-// 		std::vector<tag> tags;
-// 	};
-// 	tagslocalT tagslocal, tagslocal1;
-// 	tag datosMarca;
-	
 	struct tagslocalT
 	{
 		QMutex mutex;
@@ -121,7 +85,7 @@ private:
 			tags.clear();
 			for(auto i: t)
 			{
-				tag myT(i.id, i.tx, i.ty, i.tz, i.ry, i.rz);
+				tag myT(i.id, i.tx, i.ty, i.tz, i.rx, i.ry, i.rz);
 				tags.push_back(myT);
 			}
 		};

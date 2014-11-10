@@ -40,8 +40,8 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	// marca que quiero localizar
 	marcaBusco = 10;
 	// posicion respecto a la marca a la que quiero ir
-	marcaRefer.tx = 0.f;
-	marcaRefer.tz = 600.f;
+	marcaRefer.resize(3);
+	marcaRefer[0] = 0; marcaRefer[1] = 0; marcaRefer[2] = -1000;
 	// si he captado datos de la marca o no
 	enfocado = false;
 	// temporizador
@@ -52,7 +52,9 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	// configuro una posicion para el brazo hacia atrás recogido
 	recogido.push_back(std::make_pair<std::string, float>("shoulder_right_1", 3.14));
 	recogido.push_back(std::make_pair<std::string, float>("shoulder_right_2", -1.4));
+	recogido.push_back(std::make_pair<std::string, float>("shoulder_right_3", 0));
 	recogido.push_back(std::make_pair<std::string, float>("elbow_right", 2.4));
+	recogido.push_back(std::make_pair<std::string, float>("wrist_right_1", 0));
 	recogido.push_back(std::make_pair<std::string, float>("wrist_right_2", -1));
 	recogido.push_back(std::make_pair<std::string, float>("finger_right_1", 1));
 	recogido.push_back(std::make_pair<std::string, float>("finger_right_2", -1));
@@ -74,6 +76,14 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	subirCaja.push_back(std::make_pair<std::string, float>("shoulder_right_2", -0.7));
 	subirCaja.push_back(std::make_pair<std::string, float>("elbow_right", 1));
 	subirCaja.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.1));
+	
+	// configuro una posicion para el brazo hacia atrás recogido
+	guardoCaja.push_back(std::make_pair<std::string, float>("shoulder_right_1", 3.14));
+	guardoCaja.push_back(std::make_pair<std::string, float>("shoulder_right_2", -1.4));
+	guardoCaja.push_back(std::make_pair<std::string, float>("shoulder_right_3", 0));
+	guardoCaja.push_back(std::make_pair<std::string, float>("elbow_right", 2.4));
+	guardoCaja.push_back(std::make_pair<std::string, float>("wrist_right_1", 0));
+	guardoCaja.push_back(std::make_pair<std::string, float>("wrist_right_2", -1));
 	
 	posicionBrazo(recogido);
 }
@@ -144,16 +154,6 @@ void SpecificWorker::compute( )
 			break;
 		case STATE::IDLE: 
 // 			estado para las pruebas;
-			//calcularDestino();
-			if(tagslocal.existsId(marcaBusco, datosMarca))
-				qDebug() << " tx-> " << datosMarca.tx;
-			
-			if(tagslocal1.existsId(marcaBusco, datosMarcaBrazo))
-			{
-				qDebug() << " tx-> " << datosMarcaBrazo.tx;
-				qDebug() << " ty-> " << datosMarcaBrazo.ty;
-				qDebug() << " tz-> " << datosMarcaBrazo.tz;
-			}
 			qDebug() << "Nada";
 			break;
 	};
@@ -248,13 +248,13 @@ void SpecificWorker::girar()
 	angulo = qrand()*2.f/RAND_MAX-1;
 	if(angulo>0)
 	{
-		radGiro = -0.6;
+		radGiro = -0.4;
 		differentialrobot_proxy->setSpeedBase(0, radGiro);
 		estado = STATE::GIRANDO;
 	}
 	else
 	{
-		radGiro = 0.6;
+		radGiro = 0.4;
 		differentialrobot_proxy->setSpeedBase(0, radGiro);
 		estado = STATE::GIRANDO;
 	}
@@ -292,40 +292,34 @@ void SpecificWorker::avanzar()
 	calcularDestino();
 	//qDebug() << "vector direccion es: "<<vectorBase[0]<<"-"<<vectorBase[2];
 	// calculo las fuerzas de repulsion
-	//expulsar();
-	// calculo la distancia a la que se encuentra la marca
-	distancia = sqrt(vectorBase[0]*vectorBase[0]+vectorBase[2]*vectorBase[2]);
+	expulsar();
 
 	// si la marca esta lejos calculo la expulsion
 	// si la marca esta cerca se ignora la expulsion porque las paredes 
 	// anulan la fuerza de atraccion al estar muy cerca
-// 	if (distancia > 1000)
-// 	{
-// 		angulo = 0.001*vectorBase[0] - expulsion[0]*35; //Para marca pared
-// 		velocidad = 0.5*vectorBase[2] - expulsion[1]*9000;
-// 	}
-// 	else
-// 	{
+	if (vectorBase[2] > 500)
+	{
+		angulo = 0.001*vectorBase[0] - expulsion[0]*35; //Para marca pared
+		velocidad = 0.5*vectorBase[2] - expulsion[1]*10000;
+	}
+	else
+	{
 		angulo = 0.001*vectorBase[0];
 		velocidad = 0.5*vectorBase[2];
-// 	}
-	
+	}
+	qDebug() << "Angulo->" << angulo << " Velocidad->" << velocidad;
 	// ajusto los angulos y velocidades para evitar giros bruscos y velocidades exageradas
-	if (angulo > 0.5)
-		angulo = 0.5;
-	if (velocidad > 250)
-		velocidad = 250;
-	//qDebug() << "Velocidad->" << velocidad << " Angulo->" << angulo;
+	if (angulo > 0.4)
+		angulo = 0.4;
+	if (angulo < -0.4)
+		angulo = -0.4;
+	if (velocidad > 200)
+		velocidad = 200;
 	// asigno la velocidad y angulo de giro al robot
 	differentialrobot_proxy->setSpeedBase(velocidad, angulo);
-	//qDebug() << "Distancia restante: " << distancia;
 	
 	//compruebo si estoy sobre la marca para parar y acercarme
-	qDebug() << "VOY A: x->"<<vectorBase[0]<<" z->"<<vectorBase[2];
-	if((abs(vectorBase[0]) < 25) && (abs(vectorBase[2]) < 50))
-		estado = STATE::CELEBRAR;
-	
-	if (distanciaParada > distancia)
+	if((abs(vectorBase[0]) < 100) && (abs(vectorBase[2]) < 100))
 		estado = STATE::PENSAR;
 }
 
@@ -333,14 +327,10 @@ void SpecificWorker::avanzar()
 void SpecificWorker::pensar()
 {
 	tagslocal.existsId(marcaBusco, datosMarca);
-	qDebug() << "tx marca es ->" << datosMarca.tx;
-	if(abs(datosMarca.tx)>1)
+	qDebug() << "tx marca es ->" << datosMarca.getPos()[0];
+	if(abs(datosMarca.getPos()[0])>1)
 	{
-		differentialrobot_proxy->setSpeedBase(0, (datosMarca.tx/2000));
-// 		if(datosMarca.tx<0)
-// 			differentialrobot_proxy->setSpeedBase(0,-0.02);
-// 		else
-// 			differentialrobot_proxy->setSpeedBase(0,0.02);
+		differentialrobot_proxy->setSpeedBase(0, (datosMarca.getPos()[0]/2000));
 	}
 	else
 	{
@@ -354,16 +344,8 @@ void SpecificWorker::pensar()
 //me acerco a la marca hasta estar pegado
 void SpecificWorker::acercarse()
 {
-	
 	if(tagslocal1.existsId(marcaBusco, datosMarcaBrazo))
 	{
-// 		differentialrobot_proxy->setSpeedBase(datosMarcaBrazo.ty/2, 0);
-// 		qDebug() << "ty desde arriba:" << datosMarcaBrazo.ty;
-// 		if (abs(datosMarcaBrazo.ty) < 25)
-// 		{
-// 			differentialrobot_proxy->setSpeedBase(0,0);
-// 			estado = STATE::CENTRARBRAZO;
-// 		}
 		differentialrobot_proxy->setSpeedBase(0, 0);
 		estado = STATE::CENTRARBRAZO;
 	}
@@ -374,36 +356,25 @@ void SpecificWorker::acercarse()
 void SpecificWorker::centrarBrazo()
 {
 	tagslocal1.existsId(marcaBusco, datosMarcaBrazo);
-	if(abs(datosMarcaBrazo.tx)>10)
+	if(abs(datosMarcaBrazo.getPos()[0])>10)
 	{		
-		qDebug() << __FUNCTION__ <<  " muevo tx y espero " << datosMarcaBrazo.tx;
-		moverBrazo(1,0,0,datosMarcaBrazo.tx*0.8);
+		qDebug() << __FUNCTION__ <<  " muevo tx y espero " << datosMarcaBrazo.getPos()[0];
+		moverBrazo(1,0,0,datosMarcaBrazo.getPos()[0]*0.8);
 		sleep(2);
 	}
-	else if (abs(datosMarcaBrazo.ty)>30)
+	else if (abs(datosMarcaBrazo.getPos()[1])>30)
 	{
-		qDebug() << __FUNCTION__ <<  " muevo ty y espero " << datosMarcaBrazo.ty;
-		moverBrazo(0,1,0,datosMarcaBrazo.ty*0.8);
+		qDebug() << __FUNCTION__ <<  " muevo ty y espero " << datosMarcaBrazo.getPos()[1];
+		moverBrazo(0,1,0,datosMarcaBrazo.getPos()[1]*0.8);
 		sleep(2);
 	}
 	else
 		estado = STATE::BAJARBRAZO;
-// 	if(abs(datosMarcaBrazo.tx)>10)
-// 	{
-// 		differentialrobot_proxy->setSpeedBase(0, (datosMarcaBrazo.tx/1000));
-// 	}
-// 	else
-// 	{
-// 		differentialrobot_proxy->setSpeedBase(0, 0);
-// 		qDebug() << "Ajustado";
-//  		estado = STATE::BAJARBRAZO;
-// 	}
 }
 
 void SpecificWorker::bajarBrazo()
 {
-	qDebug() << "tx->" << datosMarcaBrazo.tx << "ty->" << datosMarcaBrazo.ty << "tz->" << datosMarcaBrazo.tz;
-	moverBrazo(0,0,1,(datosMarcaBrazo.tz-200));
+	moverBrazo(0,0,1,(datosMarcaBrazo.getPos()[2]-200));
 	sleep(2);
 	qDebug() << "Cojo la caja";
 	posicionBrazo(cerrarMano);
@@ -418,6 +389,8 @@ void SpecificWorker::celebrar()
 	sleep(4);
 	posicionBrazo(subirCaja);
 	sleep(2);
+	posicionBrazo(guardoCaja);
+	sleep(2);
 	qFatal("Se acabo");
 }
 
@@ -429,33 +402,26 @@ void SpecificWorker::calcularDestino()
 	if(tagslocal.existsId(marcaBusco, datosMarca))
 	{
 		//qDebug() << "Veo Marca";
-		QVec vector(6);
-		vector[0] = datosMarca.tx;
-		vector[1] = 0;
-		vector[2] = datosMarca.tz;
-		vector[3] = 0;
-		vector[4] = datosMarca.ry;
-		vector[5] = 0;
-		qDebug()<<"Marca en el mundo esta en: "<< datosMarca.tx << "-" << datosMarca.tz;
+		qDebug()<<"Leo aprilTags en: "<< datosMarca.getPos();
 		// añado un nodo al innermodel con la posicion de la marca que he visto
-		addTransformInnerModel("referencia", "camera", vector);
+		addTransformInnerModel("referencia", "camera", datosMarca.getPos());
 		// calculo donde esta en el mundo el punto que esta frente a la marca localizada
 		// guardo esta información para utilizarla cuando no la vea
-		vectorMundo = inner->transform("world", QVec::vec3(marcaRefer.tx, 0, marcaRefer.tz), "referencia");
+		vectorMundo = inner->transform("world", marcaRefer, "referencia");
 		//para ir a la marca directamente
 		//vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "robot");
-		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
+		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo;
 		// calculo el vector de atraccion del robot a la marca a la que me dirijo
-		vectorBase = inner->transform("robot", vectorMundo, "world");
-		qDebug()<<"Punto donde voy con transform: "<< vectorBase[0] << "-" << vectorBase[2];
+		vectorBase = inner->transform("camera", vectorMundo, "world");
+		qDebug()<<"Punto donde voy con transform: "<< vectorBase;
 		enfocado = true;
 	}
 	else{
 		//qDebug() << "A Ciegas";
-		//qDebug()<<"Marca en el mundo esta en: "<< vectorMundo[0] << "-" << vectorMundo[2];
+		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo;
 		// calculo el vector de atraccion del robot a la marca a la que me dirijo guardada en memoria
-		vectorBase = inner->transform("robot", vectorMundo, "world");
-		//qDebug()<<"Punto donde voy con transform: "<<vectorBase[0] << "-" << vectorBase[2];
+		vectorBase = inner->transform("camera", vectorMundo, "world");
+		qDebug()<<"Punto donde voy con transform: "<< vectorBase;
 	}
 }
 
