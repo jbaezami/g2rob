@@ -42,7 +42,8 @@ private:
 	// ACERCARSE: se acerca lo maximo posible a la marca
 	// CELEBRAR: celebra el exito
 	// IDLE: estado para pruebas
-	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CENTRARBRAZO, BAJARBRAZO, CELEBRAR, IDLE};
+	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CENTRARBRAZO, BAJARBRAZO, COGERCAJA
+						, CJGIRAR, CJGIRANDO, CJPARAR, CJAVANZAR, CJPENSAR, CJDEJARCAJA, CELEBRAR, IDLE};
 	STATE estado;
 	// variables para la marca que busco, la distancia a la marca y la distancia a la que paro
 	int marcaBusco, distanciaMarca, distanciaParada;
@@ -108,6 +109,7 @@ private:
 	
 	void posicionBrazo(const TPose &lista);
 	void moverBrazo ( float x, float y, float z, float dist);
+	void dibujarCaja ();
 
 public:
 	SpecificWorker(MapPrx& mprx, QObject *parent = 0);	
@@ -128,6 +130,8 @@ public slots:
 	void acercarse();
 	void centrarBrazo();
 	void bajarBrazo();
+	void cogerCaja();
+	void dejarCaja();
 	void celebrar();
 	void calcularDestino();
 	void addTransformInnerModel(const QString &name, const QString &parent, const QVec &pose6D);

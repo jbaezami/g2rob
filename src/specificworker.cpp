@@ -67,15 +67,15 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	coger.push_back(std::make_pair<std::string, float>("finger_right_1", 0));
 	coger.push_back(std::make_pair<std::string, float>("finger_right_2", 0));
 	
-	//configuro una posicion para el brazo con mano cerrada para coger la caja
-	cerrarMano.push_back(std::make_pair<std::string, float>("finger_right_1", -0.5));
-	cerrarMano.push_back(std::make_pair<std::string, float>("finger_right_2", 0.5));
-	
 	//configuro una posicion para subir la caja
 	subirCaja.push_back(std::make_pair<std::string, float>("shoulder_right_1", 0));
 	subirCaja.push_back(std::make_pair<std::string, float>("shoulder_right_2", -0.7));
 	subirCaja.push_back(std::make_pair<std::string, float>("elbow_right", 1));
 	subirCaja.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.1));
+	
+	
+	cerrarMano.push_back(std::make_pair<std::string, float>("finger_right_1", -0.4));
+	cerrarMano.push_back(std::make_pair<std::string, float>("finger_right_2", 0.4));
 	
 	// configuro una posicion para el brazo hacia atrás recogido
 	guardoCaja.push_back(std::make_pair<std::string, float>("shoulder_right_1", 3.14));
@@ -148,9 +148,37 @@ void SpecificWorker::compute( )
 			qDebug() << "Bajar Brazo";
 			bajarBrazo();
 			break;
+		case STATE::COGERCAJA:
+			qDebug() << "Bajar Brazo";
+			cogerCaja();
+			break;
+		case STATE::CJGIRAR:
+			qDebug() << "Girar";
+			girar(); 
+			break;
+		case STATE::CJGIRANDO:
+			qDebug() << "Girando";
+			girando(); 
+			break;
+		case STATE::CJPARAR:
+			qDebug() << "Parar";
+			parar(); 
+			break;
+		case STATE::CJAVANZAR:
+			qDebug() << "Avanzar";
+			avanzar(); 
+			break;
+		case STATE::CJPENSAR:
+			qDebug() << "Pensar";
+			pensar();
+			break;
 		case STATE::CELEBRAR:
 			qDebug() << "Celebrar";
 			celebrar(); 
+			break;
+		case STATE::CJDEJARCAJA:
+			qDebug() << "Dejar caja";
+			dejarCaja();
 			break;
 		case STATE::IDLE: 
 // 			estado para las pruebas;
@@ -334,10 +362,16 @@ void SpecificWorker::pensar()
 	}
 	else
 	{
-		posicionBrazo(coger);
 		differentialrobot_proxy->setSpeedBase(0, 0);
-		qDebug() << "Ajustado";
- 		estado = STATE::ACERCARSE;
+		if (estado == STATE::PENSAR)
+		{	
+			posicionBrazo(coger);
+			sleep(1);
+			qDebug() << "Ajustado";
+			estado = STATE::ACERCARSE;
+		}
+		else
+			estado = STATE::CJDEJARCAJA;
 	}
 }
 
@@ -376,9 +410,39 @@ void SpecificWorker::bajarBrazo()
 {
 	moverBrazo(0,0,1,(datosMarcaBrazo.getPos()[2]-200));
 	sleep(2);
+	estado = STATE::COGERCAJA;
+}
+
+void SpecificWorker::cogerCaja()
+{
 	qDebug() << "Cojo la caja";
+	//bodyinversekinematics_proxy->setFingers(50);
 	posicionBrazo(cerrarMano);
-	estado = STATE::CELEBRAR;
+	dibujarCaja();
+	posicionBrazo(subirCaja);
+	sleep(2);
+	posicionBrazo(guardoCaja);
+	sleep(2);
+	marcaBusco = 3;
+	estado = STATE::CJGIRAR;
+}
+
+void SpecificWorker::dibujarCaja()
+{
+	innermodelmanager_proxy->removeNode("C10");
+	Pose3D posCaja;
+	posCaja.x = -25; posCaja.y = 0; posCaja.z = 80; posCaja.rx = 0; posCaja.ry = 0; posCaja.rz = 0;
+	innermodelmanager_proxy->addTransform("cajaCogida", "static", "arm_right_7", posCaja);
+	Plane3D planoCaja;
+	planoCaja.px = 0; planoCaja.py = 0; planoCaja.pz = 0; planoCaja.nx = 0; planoCaja.ny = 0; planoCaja.nz = 0; 
+	planoCaja.width = 100; planoCaja.height =100; planoCaja.thickness = 100; planoCaja.texture = "/home/robocomp/robocomp/files/innermodel/tar36h11-10.png";
+	innermodelmanager_proxy->addPlane("cajaCogidaPlano", "cajaCogida", planoCaja);
+}
+
+void SpecificWorker::dejarCaja()
+{
+	qDebug() << "Dejo la caja";
+	qFatal("Que crack de robot");
 }
 
 // paro y celebro que he llegado
@@ -387,10 +451,7 @@ void SpecificWorker::celebrar()
 	differentialrobot_proxy->stopBase();
 	qDebug() << "He llegado!";
 	sleep(4);
-	posicionBrazo(subirCaja);
-	sleep(2);
-	posicionBrazo(guardoCaja);
-	sleep(2);
+	innermodelmanager_proxy->removeNode("cajaCogida");
 	qFatal("Se acabo");
 }
 
