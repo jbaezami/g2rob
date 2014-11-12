@@ -55,11 +55,11 @@ private:
 	float radGiro, angulo, velocidad, distancia, intervalo;
 	InnerModel *inner;
 	//vectores de transformacion para mover un punto al mundo, a la base y vector de expulsion
-	QVec marcaRefer, vectorMundo, vectorBase, expulsion;
+	QVec marcaRefer, vectorMundo, vectorBase, expulsion, vectorSuelo;
 	// reloj para las temporizaciones
 	QTime reloj;
 	// boolean que indica si ya tengo la marca a la que voy en memoria o no
-	TPose recogido, coger, cerrarMano, subirCaja, guardoCaja;
+	TPose recogido, coger, dejar, cerrarMano, abrirMano, subirCaja, guardoCaja;
 	
 	struct tag
 	{
@@ -110,6 +110,8 @@ private:
 	void posicionBrazo(const TPose &lista);
 	void moverBrazo ( float x, float y, float z, float dist);
 	void dibujarCaja ();
+	void dibujarCajaSuelo ();
+	void calcularSuelo();
 
 public:
 	SpecificWorker(MapPrx& mprx, QObject *parent = 0);	

@@ -38,7 +38,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	// distancia a la que me paro
 	distanciaParada = 1600;
 	// marca que quiero localizar
-	marcaBusco = 10;
+	marcaBusco = 11;
 	// posicion respecto a la marca a la que quiero ir
 	marcaRefer.resize(3);
 	marcaRefer[0] = 0; marcaRefer[1] = 0; marcaRefer[2] = -1000;
@@ -67,15 +67,25 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	coger.push_back(std::make_pair<std::string, float>("finger_right_1", 0));
 	coger.push_back(std::make_pair<std::string, float>("finger_right_2", 0));
 	
+	//configuro una posicion para el brazo para delante para dejar cajas
+	dejar.push_back(std::make_pair<std::string, float>("shoulder_right_1", 0));
+	dejar.push_back(std::make_pair<std::string, float>("shoulder_right_2", -0.7));
+	dejar.push_back(std::make_pair<std::string, float>("elbow_right", 1));
+	dejar.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.3));
+	
 	//configuro una posicion para subir la caja
 	subirCaja.push_back(std::make_pair<std::string, float>("shoulder_right_1", 0));
 	subirCaja.push_back(std::make_pair<std::string, float>("shoulder_right_2", -0.7));
 	subirCaja.push_back(std::make_pair<std::string, float>("elbow_right", 1));
-	subirCaja.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.1));
+	subirCaja.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.3));
 	
-	
+	//configuro una posicion para cerrar la mano
 	cerrarMano.push_back(std::make_pair<std::string, float>("finger_right_1", -0.4));
 	cerrarMano.push_back(std::make_pair<std::string, float>("finger_right_2", 0.4));
+	
+	//configuro una posicion para abrir la mano
+	abrirMano.push_back(std::make_pair<std::string, float>("finger_right_1", 0));
+	abrirMano.push_back(std::make_pair<std::string, float>("finger_right_2", 0));
 	
 	// configuro una posicion para el brazo hacia atrás recogido
 	guardoCaja.push_back(std::make_pair<std::string, float>("shoulder_right_1", 3.14));
@@ -503,14 +513,34 @@ void SpecificWorker::cogerCaja()
 
 void SpecificWorker::dibujarCaja()
 {
-	innermodelmanager_proxy->removeNode("C10");
-	Pose3D posCaja;
-	posCaja.x = -25; posCaja.y = 0; posCaja.z = 80; posCaja.rx = 0; posCaja.ry = 0; posCaja.rz = 0;
-	innermodelmanager_proxy->addTransform("cajaCogida", "static", "arm_right_7", posCaja);
-	Plane3D planoCaja;
-	planoCaja.px = 0; planoCaja.py = 0; planoCaja.pz = 0; planoCaja.nx = 0; planoCaja.ny = 0; planoCaja.nz = 0; 
-	planoCaja.width = 100; planoCaja.height =100; planoCaja.thickness = 100; planoCaja.texture = "/home/robocomp/robocomp/files/innermodel/tar36h11-10.png";
-	innermodelmanager_proxy->addPlane("cajaCogidaPlano", "cajaCogida", planoCaja);
+	try{
+		innermodelmanager_proxy->removeNode("C10");
+		Pose3D posCaja;
+		posCaja.x = -25; posCaja.y = 0; posCaja.z = 80; posCaja.rx = 0; posCaja.ry = 0; posCaja.rz = 0;
+		innermodelmanager_proxy->addTransform("cajaCogida", "static", "arm_right_7", posCaja);
+		Plane3D planoCaja;
+		planoCaja.px = 0; planoCaja.py = 0; planoCaja.pz = 0; planoCaja.nx = 0; planoCaja.ny = 0; planoCaja.nz = 0; 
+		planoCaja.width = 100; planoCaja.height =100; planoCaja.thickness = 100; planoCaja.texture = "/home/robocomp/robocomp/files/innermodel/tar36h11-10.png";
+		innermodelmanager_proxy->addPlane("cajaCogidaPlano", "cajaCogida", planoCaja);
+	}
+	catch (Ice::Exception &ex)
+	{std::cout << ex << std::cout;}
+}
+
+void SpecificWorker::dibujarCajaSuelo()
+{
+	try{
+		innermodelmanager_proxy->removeNode("cajaCogida");
+		Pose3D posCaja;
+		posCaja.x = vectorSuelo[0]; posCaja.y = 50; posCaja.z = vectorSuelo[2]; posCaja.rx = 0; posCaja.ry = 0; posCaja.rz = 0;
+		innermodelmanager_proxy->addTransform("cajaSuelo", "static", "world", posCaja);
+		Plane3D planoCaja;
+		planoCaja.px = 0; planoCaja.py = 0; planoCaja.pz = 0; planoCaja.nx = 0; planoCaja.ny = 0; planoCaja.nz = 0; 
+		planoCaja.width = 100; planoCaja.height =100; planoCaja.thickness = 100; planoCaja.texture = "/home/robocomp/robocomp/files/innermodel/tar36h11-10.png";
+		innermodelmanager_proxy->addPlane("cajaSueloPlano", "cajaSuelo", planoCaja);
+	}
+	catch (Ice::Exception &ex)
+	{std::cout << ex << std::cout;}
 }
 
 void SpecificWorker::aproxCaja()
@@ -518,20 +548,40 @@ void SpecificWorker::aproxCaja()
 	if (tagslocal.existsId(marcaBusco, datosMarca))
 		{
 			if (datosMarca.getPos()[2] < 600)
+			{		
+				differentialrobot_proxy->setSpeedBase(0,0);
+				posicionBrazo(dejar);
+				sleep(4);
 				estado = STATE::CJDEJARCAJA;
+			}
 		}
 }
 
 void SpecificWorker::dejarCaja()
 {
 	try{
-		differentialrobot_proxy->setSpeedBase(0,0);
+		calcularSuelo();
+		qDebug() << "Vector suelo a: " << vectorSuelo;
+		moverBrazo(0,0,1,vectorSuelo[1]-60);
+		sleep(1);
+		posicionBrazo(abrirMano);
+		dibujarCajaSuelo();
 	}
 	catch( const Ice::Exception &ex)
 	{std::cout << ex << std::endl;}
 	qDebug() << "Dejo la caja";
-	posicionBrazo(coger);
+	sleep(2);
+	posicionBrazo(recogido);
+	sleep(4);
 	qFatal("Que crack de robot");
+}
+
+void SpecificWorker::calcularSuelo(){
+	try
+	{
+		vectorSuelo = inner->transform("world", "arm_right_7");
+	}catch( Ice::Exception &ex )
+	{ std::cout << ex << std::cout;}
 }
 
 // paro y celebro que he llegado
@@ -540,7 +590,7 @@ void SpecificWorker::celebrar()
 	differentialrobot_proxy->stopBase();
 	qDebug() << "He llegado!";
 	sleep(4);
-	innermodelmanager_proxy->removeNode("cajaCogida");
+	innermodelmanager_proxy->removeNode("cajaSuelo");
 	qFatal("Se acabo");
 }
 
@@ -551,27 +601,35 @@ void SpecificWorker::calcularDestino()
 	// else: 	-a ciegas- 		con los datos de memoria calculo la nueva posicion de la marca respecto al robot
 	if(tagslocal.existsId(marcaBusco, datosMarca))
 	{
-		//qDebug() << "Veo Marca";
-		qDebug()<<"Leo aprilTags en: "<< datosMarca.getPos();
-		// añado un nodo al innermodel con la posicion de la marca que he visto
-		addTransformInnerModel("referencia", "camera", datosMarca.getPos());
-		// calculo donde esta en el mundo el punto que esta frente a la marca localizada
-		// guardo esta información para utilizarla cuando no la vea
-		vectorMundo = inner->transform("world", marcaRefer, "referencia");
-		//para ir a la marca directamente
-		//vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "robot");
-		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo;
-		// calculo el vector de atraccion del robot a la marca a la que me dirijo
-		vectorBase = inner->transform("camera", vectorMundo, "world");
-		qDebug()<<"Punto donde voy con transform: "<< vectorBase;
-		enfocado = true;
+		try
+		{
+			//qDebug() << "Veo Marca";
+			qDebug()<<"Leo aprilTags en: "<< datosMarca.getPos();
+			// añado un nodo al innermodel con la posicion de la marca que he visto
+			addTransformInnerModel("referencia", "camera", datosMarca.getPos());
+			// calculo donde esta en el mundo el punto que esta frente a la marca localizada
+			// guardo esta información para utilizarla cuando no la vea
+			vectorMundo = inner->transform("world", marcaRefer, "referencia");
+			//para ir a la marca directamente
+			//vectorMundo = inner->transform("world", QVec::vec3(datosMarca.tx, 0, datosMarca.tz), "robot");
+			qDebug()<<"Marca en el mundo esta en: "<< vectorMundo;
+			// calculo el vector de atraccion del robot a la marca a la que me dirijo
+			vectorBase = inner->transform("camera", vectorMundo, "world");
+			qDebug()<<"Punto donde voy con transform: "<< vectorBase;
+			enfocado = true;
+		}catch( Ice::Exception &ex )
+		{ std::cout << ex << std::cout;}
 	}
 	else{
-		//qDebug() << "A Ciegas";
-		qDebug()<<"Marca en el mundo esta en: "<< vectorMundo;
-		// calculo el vector de atraccion del robot a la marca a la que me dirijo guardada en memoria
-		vectorBase = inner->transform("camera", vectorMundo, "world");
-		qDebug()<<"Punto donde voy con transform: "<< vectorBase;
+		try
+		{
+			//qDebug() << "A Ciegas";
+			qDebug()<<"Marca en el mundo esta en: "<< vectorMundo;
+			// calculo el vector de atraccion del robot a la marca a la que me dirijo guardada en memoria
+			vectorBase = inner->transform("camera", vectorMundo, "world");
+			qDebug()<<"Punto donde voy con transform: "<< vectorBase;
+		}catch( Ice::Exception &ex )
+		{ std::cout << ex << std::cout;}
 	}
 }
 
