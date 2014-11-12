@@ -43,7 +43,7 @@ private:
 	// CELEBRAR: celebra el exito
 	// IDLE: estado para pruebas
 	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CENTRARBRAZO, BAJARBRAZO, COGERCAJA
-						, CJGIRAR, CJGIRANDO, CJPARAR, CJAVANZAR, CJPENSAR, CJDEJARCAJA, CELEBRAR, IDLE};
+						, CJGIRAR, CJGIRANDO, CJPARAR, CJAVANZAR, CJPENSAR, CJAPROX, CJDEJARCAJA, CELEBRAR, IDLE};
 	STATE estado;
 	// variables para la marca que busco, la distancia a la marca y la distancia a la que paro
 	int marcaBusco, distanciaMarca, distanciaParada;
@@ -131,6 +131,7 @@ public slots:
 	void centrarBrazo();
 	void bajarBrazo();
 	void cogerCaja();
+	void aproxCaja();
 	void dejarCaja();
 	void celebrar();
 	void calcularDestino();

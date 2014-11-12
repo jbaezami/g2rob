@@ -153,32 +153,36 @@ void SpecificWorker::compute( )
 			cogerCaja();
 			break;
 		case STATE::CJGIRAR:
-			qDebug() << "Girar";
+			qDebug() << "Caja Girar";
 			girar(); 
 			break;
 		case STATE::CJGIRANDO:
-			qDebug() << "Girando";
+			qDebug() << "Caja Girando";
 			girando(); 
 			break;
 		case STATE::CJPARAR:
-			qDebug() << "Parar";
+			qDebug() << "Caja Parar";
 			parar(); 
 			break;
 		case STATE::CJAVANZAR:
-			qDebug() << "Avanzar";
+			qDebug() << "Caja Avanzar";
 			avanzar(); 
 			break;
 		case STATE::CJPENSAR:
-			qDebug() << "Pensar";
+			qDebug() << "Caja Pensar";
 			pensar();
 			break;
-		case STATE::CELEBRAR:
-			qDebug() << "Celebrar";
-			celebrar(); 
+		case STATE::CJAPROX:
+			qDebug() << "Aproximar caja";
+			aproxCaja();
 			break;
 		case STATE::CJDEJARCAJA:
 			qDebug() << "Dejar caja";
 			dejarCaja();
+			break;
+		case STATE::CELEBRAR:
+			qDebug() << "Celebrar";
+			celebrar(); 
 			break;
 		case STATE::IDLE: 
 // 			estado para las pruebas;
@@ -193,7 +197,11 @@ void SpecificWorker::moverBrazo(float x, float y, float z, float dist)
 	axis.x = x;
 	axis.y = y;
 	axis.z = z;
-	bodyinversekinematics_proxy->advanceAlongAxis("ARM", axis, dist);
+	try{
+		bodyinversekinematics_proxy->advanceAlongAxis("ARM", axis, dist);
+	}
+	catch( const Ice::Exception &ex)
+	{ std::cout << ex << std::endl;}
 }
 
 void SpecificWorker::posicionBrazo(const TPose &lista)
@@ -276,15 +284,29 @@ void SpecificWorker::girar()
 	angulo = qrand()*2.f/RAND_MAX-1;
 	if(angulo>0)
 	{
-		radGiro = -0.4;
-		differentialrobot_proxy->setSpeedBase(0, radGiro);
-		estado = STATE::GIRANDO;
+		try{	
+			radGiro = -0.4;
+			differentialrobot_proxy->setSpeedBase(0, radGiro);
+			if (estado == STATE::GIRAR)
+				estado = STATE::GIRANDO;
+			else
+				estado = STATE::CJGIRANDO;
+		}
+		catch( const Ice::Exception &ex)
+		{ std::cout << ex << std::endl;}
 	}
 	else
 	{
-		radGiro = 0.4;
-		differentialrobot_proxy->setSpeedBase(0, radGiro);
-		estado = STATE::GIRANDO;
+		try{
+			radGiro = 0.4;
+			differentialrobot_proxy->setSpeedBase(0, radGiro);
+			if (estado == STATE::GIRAR)
+				estado = STATE::GIRANDO;
+			else
+				estado = STATE::CJGIRANDO;
+		}
+		catch( const Ice::Exception &ex)
+	{ std::cout << ex << std::endl;}
 	}
 }
 
@@ -292,7 +314,12 @@ void SpecificWorker::girar()
 void SpecificWorker::girando()
 {
 	if(tagslocal.existsId(marcaBusco, datosMarca))
-		estado = STATE::PARAR;
+	{
+		if (estado == STATE::GIRANDO)
+			estado = STATE::PARAR;
+		else
+			estado = STATE::CJPARAR;
+	}
 	else
 	{
 		// si llevo demasiado tiempo girando me muevo a otro lado
@@ -305,12 +332,25 @@ void SpecificWorker::girando()
 // paro el robot, si la marca está localizada avanzo, si se ha perdido vuelvo a buscarla
 void SpecificWorker::parar()
 {
-	differentialrobot_proxy->setSpeedBase(0,0);
-	
-	if (tagslocal.existsId(marcaBusco, datosMarca))
-		estado = STATE::AVANZAR;
-	else
-		estado = STATE::GIRAR;
+	try{
+		differentialrobot_proxy->setSpeedBase(0,0);
+			
+		if (tagslocal.existsId(marcaBusco, datosMarca))
+		{
+			if (estado == STATE::PARAR)
+				estado = STATE::AVANZAR;
+			else
+				estado = STATE::CJAVANZAR;
+		}else
+		{	
+			if (estado == STATE::PARAR)
+				estado = STATE::GIRAR;
+			else
+				estado = STATE::CJGIRAR;
+		}
+	}
+	catch( const Ice::Exception &ex)
+	{ std::cout << ex << std::endl;}
 }
 
 // avanzo hacia la marca
@@ -318,23 +358,29 @@ void SpecificWorker::avanzar()
 {
 	// calculo la posicion a la que debo moverme
 	calcularDestino();
-	//qDebug() << "vector direccion es: "<<vectorBase[0]<<"-"<<vectorBase[2];
+	qDebug() << "vector direccion es: "<<vectorBase[0]<<"-"<<vectorBase[2];
+	//compruebo si estoy sobre la marca para parar y acercarme
+	switch(estado)
+	{
+		case STATE::AVANZAR:
+		if((abs(vectorBase[0]) < 50) && (abs(vectorBase[2]) < 50))
+			estado = STATE::PENSAR;
+		break;
+		case STATE::CJAVANZAR:
+		if((abs(vectorBase[0]) < 250) && (abs(vectorBase[2]) < 250))
+			estado = STATE::CJPENSAR;
+		break;
+	}
 	// calculo las fuerzas de repulsion
 	expulsar();
 
 	// si la marca esta lejos calculo la expulsion
 	// si la marca esta cerca se ignora la expulsion porque las paredes 
 	// anulan la fuerza de atraccion al estar muy cerca
-	if (vectorBase[2] > 500)
-	{
-		angulo = 0.001*vectorBase[0] - expulsion[0]*35; //Para marca pared
-		velocidad = 0.5*vectorBase[2] - expulsion[1]*10000;
-	}
-	else
-	{
-		angulo = 0.001*vectorBase[0];
-		velocidad = 0.5*vectorBase[2];
-	}
+	
+	qDebug() << "Factor calculado:" << (10000*(expulsion[1]/4000.0f));
+	angulo = 0.001*vectorBase[0] - expulsion[0]*35; //Para marca pared
+	velocidad = 0.5*vectorBase[2] - expulsion[1]*(10000*(expulsion[1]/4000.0f));
 	qDebug() << "Angulo->" << angulo << " Velocidad->" << velocidad;
 	// ajusto los angulos y velocidades para evitar giros bruscos y velocidades exageradas
 	if (angulo > 0.4)
@@ -344,11 +390,12 @@ void SpecificWorker::avanzar()
 	if (velocidad > 200)
 		velocidad = 200;
 	// asigno la velocidad y angulo de giro al robot
-	differentialrobot_proxy->setSpeedBase(velocidad, angulo);
+	try{
+		differentialrobot_proxy->setSpeedBase(velocidad, angulo);
+	}
+	catch( const Ice::Exception &ex)
+	{ std::cout << ex << std::endl;}
 	
-	//compruebo si estoy sobre la marca para parar y acercarme
-	if((abs(vectorBase[0]) < 100) && (abs(vectorBase[2]) < 100))
-		estado = STATE::PENSAR;
 }
 
 // giro para ajustar la marca al centro de la camara
@@ -358,11 +405,19 @@ void SpecificWorker::pensar()
 	qDebug() << "tx marca es ->" << datosMarca.getPos()[0];
 	if(abs(datosMarca.getPos()[0])>1)
 	{
-		differentialrobot_proxy->setSpeedBase(0, (datosMarca.getPos()[0]/2000));
+		try{
+			differentialrobot_proxy->setSpeedBase(0, (datosMarca.getPos()[0]/2000));
+		}
+		catch( const Ice::Exception &ex)
+		{ std::cout << ex << std::endl;}
 	}
 	else
 	{
-		differentialrobot_proxy->setSpeedBase(0, 0);
+		try{
+			differentialrobot_proxy->setSpeedBase(0, 0);
+		}
+		catch( const Ice::Exception &ex)
+	{ std::cout << ex << std::endl;}
 		if (estado == STATE::PENSAR)
 		{	
 			posicionBrazo(coger);
@@ -371,7 +426,14 @@ void SpecificWorker::pensar()
 			estado = STATE::ACERCARSE;
 		}
 		else
-			estado = STATE::CJDEJARCAJA;
+		{
+			try{
+				differentialrobot_proxy->setSpeedBase(150,0);
+				estado = STATE::CJAPROX;
+			}
+			catch( const Ice::Exception &ex)
+			{ std::cout << ex << std::endl;} 
+		}
 	}
 }
 
@@ -380,11 +442,19 @@ void SpecificWorker::acercarse()
 {
 	if(tagslocal1.existsId(marcaBusco, datosMarcaBrazo))
 	{
-		differentialrobot_proxy->setSpeedBase(0, 0);
-		estado = STATE::CENTRARBRAZO;
+		try{
+			differentialrobot_proxy->setSpeedBase(0, 0);
+			estado = STATE::CENTRARBRAZO;
+		}
+		catch( const Ice::Exception &ex)
+		{ std::cout << ex << std::endl;}
 	}
 	else
-		differentialrobot_proxy->setSpeedBase(50, 0);
+		try{
+			differentialrobot_proxy->setSpeedBase(50, 0);
+		}
+		catch( const Ice::Exception &ex)
+	{ std::cout << ex << std::endl;}
 }
 
 void SpecificWorker::centrarBrazo()
@@ -416,7 +486,11 @@ void SpecificWorker::bajarBrazo()
 void SpecificWorker::cogerCaja()
 {
 	qDebug() << "Cojo la caja";
-	//bodyinversekinematics_proxy->setFingers(50);
+// 	try{
+// 		bodyinversekinematics_proxy->setFingers(90000.0f);
+// 	}
+// 	catch( const Ice::Exception &ex)
+// 	{ std::cout << ex << std::endl;}
 	posicionBrazo(cerrarMano);
 	dibujarCaja();
 	posicionBrazo(subirCaja);
@@ -439,9 +513,24 @@ void SpecificWorker::dibujarCaja()
 	innermodelmanager_proxy->addPlane("cajaCogidaPlano", "cajaCogida", planoCaja);
 }
 
+void SpecificWorker::aproxCaja()
+{
+	if (tagslocal.existsId(marcaBusco, datosMarca))
+		{
+			if (datosMarca.getPos()[2] < 600)
+				estado = STATE::CJDEJARCAJA;
+		}
+}
+
 void SpecificWorker::dejarCaja()
 {
+	try{
+		differentialrobot_proxy->setSpeedBase(0,0);
+	}
+	catch( const Ice::Exception &ex)
+	{std::cout << ex << std::endl;}
 	qDebug() << "Dejo la caja";
+	posicionBrazo(coger);
 	qFatal("Que crack de robot");
 }
 

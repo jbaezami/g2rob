@@ -22,7 +22,7 @@ static const uint qt_meta_data_SpecificWorker[] = {
        6,       // revision
        0,       // classname
        0,    0, // classinfo
-      16,   14, // methods
+      17,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -44,8 +44,9 @@ static const uint qt_meta_data_SpecificWorker[] = {
      145,   15,   15,   15, 0x0a,
      157,   15,   15,   15, 0x0a,
      169,   15,   15,   15, 0x0a,
-     180,   15,   15,   15, 0x0a,
-     217,  198,   15,   15, 0x0a,
+     181,   15,   15,   15, 0x0a,
+     192,   15,   15,   15, 0x0a,
+     229,  210,   15,   15, 0x0a,
 
        0        // eod
 };
@@ -55,8 +56,9 @@ static const char qt_meta_stringdata_SpecificWorker[] = {
     "comprobarChoque()\0expulsar()\0girar()\0"
     "girando()\0parar()\0avanzar()\0pensar()\0"
     "acercarse()\0centrarBrazo()\0bajarBrazo()\0"
-    "cogerCaja()\0dejarCaja()\0celebrar()\0"
-    "calcularDestino()\0name,parent,pose6D\0"
+    "cogerCaja()\0aproxCaja()\0dejarCaja()\0"
+    "celebrar()\0calcularDestino()\0"
+    "name,parent,pose6D\0"
     "addTransformInnerModel(QString,QString,QVec)\0"
 };
 
@@ -79,10 +81,11 @@ void SpecificWorker::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _
         case 9: _t->centrarBrazo(); break;
         case 10: _t->bajarBrazo(); break;
         case 11: _t->cogerCaja(); break;
-        case 12: _t->dejarCaja(); break;
-        case 13: _t->celebrar(); break;
-        case 14: _t->calcularDestino(); break;
-        case 15: _t->addTransformInnerModel((*reinterpret_cast< const QString(*)>(_a[1])),(*reinterpret_cast< const QString(*)>(_a[2])),(*reinterpret_cast< const QVec(*)>(_a[3]))); break;
+        case 12: _t->aproxCaja(); break;
+        case 13: _t->dejarCaja(); break;
+        case 14: _t->celebrar(); break;
+        case 15: _t->calcularDestino(); break;
+        case 16: _t->addTransformInnerModel((*reinterpret_cast< const QString(*)>(_a[1])),(*reinterpret_cast< const QString(*)>(_a[2])),(*reinterpret_cast< const QVec(*)>(_a[3]))); break;
         default: ;
         }
     }
@@ -120,9 +123,9 @@ int SpecificWorker::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 16)
+        if (_id < 17)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 16;
+        _id -= 17;
     }
     return _id;
 }
