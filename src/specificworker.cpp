@@ -38,7 +38,6 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	// distancia a la que me paro
 	distanciaParada = 1600;
 	// marca que quiero localizar
-	marcaBusco = 10;
 	// posicion respecto a la marca a la que quiero ir
 	marcaRefer.resize(3);
 	marcaRefer[0] = 0; marcaRefer[1] = 0; marcaRefer[2] = -1000;
@@ -50,9 +49,12 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	// intervalo para aplicar al reloj aleatorio para que la espera sea aleatoria no un valor fijo
 	intervalo = qrand()*2200.f/RAND_MAX + 4000;
 	
+	// inicialización para que cuando empiece a buscar la primera vez sea random a derecha o izquierda
+	angulo = qrand()*2.f/RAND_MAX-1;
+	
 	marcas.push_back(std::make_pair<int, bool>(10,false));
 	marcas.push_back(std::make_pair<int, bool>(11,false));
-	marcas.push_back(std::make_pair<int, bool>(12,false));
+	marcas.push_back(std::make_pair<int, bool>(12,true));
 	
 	// configuro una posicion para el brazo hacia atrás recogido
 	recogido.push_back(std::make_pair<std::string, float>("shoulder_right_1", 3.14));
@@ -244,6 +246,7 @@ void SpecificWorker::posicionBrazo(const TPose &lista)
 // devuelve false si no la hemos movido, true si la hemos colocado
 bool SpecificWorker::comprobarMarca(int id)
 {
+	qDebug() << "Compruebo si colocada : " << id;
 	try 
 	{
 		for(auto i:marcas)
@@ -255,6 +258,23 @@ bool SpecificWorker::comprobarMarca(int id)
 	{
 		std::cout << ex << std::endl;
 	}
+}
+
+bool SpecificWorker::estaEnBusca(int id)
+{
+	qDebug() << "Compruebo si en busca : " << id;
+	try 
+	{
+		for(auto i:marcas)
+		{
+			if (i.first == id)
+				return true;
+		}
+	} catch (const Ice::Exception &ex) 
+	{
+		std::cout << ex << std::endl;
+	}
+	return false;
 }
 
 bool SpecificWorker::ponerMarcaAColocada(int id)
@@ -273,6 +293,22 @@ bool SpecificWorker::ponerMarcaAColocada(int id)
 		std::cout << ex << std::endl;
 	}
 	return false;
+}
+
+bool SpecificWorker::todasColocadas()
+{
+	try 
+	{
+		for(auto i:marcas)
+		{
+			if (!i.second)
+				return false;
+		}
+	} catch (const Ice::Exception &ex) 
+	{
+		std::cout << ex << std::endl;
+	}
+	return true;
 }
 
 // modulo que comprueba los valores del laser que esten frente al robot (angulo entre 1.2 y -1.2)
@@ -331,13 +367,11 @@ void SpecificWorker::expulsar()
 
 // modulo que gira a un lado o a otro
 void SpecificWorker::girar()
-{
-	// inicialización para que cuando empiece a buscar la primera vez sea random a derecha o izquierda
-	angulo = qrand()*2.f/RAND_MAX-1;
+{	
 	if(angulo>0)
 	{
 		try{	
-			radGiro = -0.4;
+			radGiro = -0.3;
 			differentialrobot_proxy->setSpeedBase(0, radGiro);
 			if (estado == STATE::GIRAR)
 				estado = STATE::GIRANDO;
@@ -350,7 +384,7 @@ void SpecificWorker::girar()
 	else
 	{
 		try{
-			radGiro = 0.4;
+			radGiro = 0.3;
 			differentialrobot_proxy->setSpeedBase(0, radGiro);
 			if (estado == STATE::GIRAR)
 				estado = STATE::GIRANDO;
@@ -367,20 +401,25 @@ void SpecificWorker::girando()
 {
 	if (!marcaFijada)
 	{
-		if((tagslocal.existFirst(datosMarca))&&(!comprobarMarca(datosMarca.getID())))
+		qDebug() << "Compruebo si veo algo";
+		if((tagslocal.existFirst(datosMarca))&&(estaEnBusca(datosMarca.getID()))&&(!comprobarMarca(datosMarca.getID()))){
+			marcaBusco = datosMarca.getID();
 			marcaFijada = true;
-	}
-	// lo hago a continuación para asegurar que con el giro no se ha pasado la marca
-	// si se la hubiese pasado seguirá girando hasta verla de nuevo
-	if (marcaFijada)
-	{
-		if(tagslocal.existsId(marcaBusco, datosMarca))
-		{
 			if (estado == STATE::GIRANDO)
 				estado = STATE::PARAR;
 			else
 				estado = STATE::CJPARAR;
 		}
+	}
+	else{
+		if(tagslocal.existFirst(datosMarca)){
+			marcaBusco = datosMarca.getID();
+			marcaFijada = true;
+			if (estado == STATE::GIRANDO)
+				estado = STATE::PARAR;
+			else
+				estado = STATE::CJPARAR;
+		}	
 	}
 }
 
@@ -389,7 +428,6 @@ void SpecificWorker::parar()
 {
 	try{
 		differentialrobot_proxy->setSpeedBase(0,0);
-			
 		if (tagslocal.existsId(marcaBusco, datosMarca))
 		{
 			if (estado == STATE::PARAR)
@@ -398,6 +436,7 @@ void SpecificWorker::parar()
 				estado = STATE::CJAVANZAR;
 		}else
 		{	
+			angulo = angulo * -1;
 			if (estado == STATE::PARAR)
 				estado = STATE::GIRAR;
 			else
@@ -538,6 +577,7 @@ void SpecificWorker::centrarBrazo()
 			posicion.position = giro;
 			posicion.maxSpeed = 1.f;
 			jointmotor_proxy->setPosition(posicion);
+			sleep(1);
 			estado = STATE::BAJARBRAZO;
 		}catch(Ice::Exception &ex){std::cout << ex << std::cout;}
 	}
@@ -573,8 +613,8 @@ void SpecificWorker::cogerCaja()
 void SpecificWorker::dibujarCaja()
 {
 	try{
-		QString marca = "C" + QString.number(marcaBusco,10);
-		String marcaString = marca.toStdString();
+		QString marca = "C" + QString::number(caja,10);
+		string marcaString = marca.toStdString();
 		innermodelmanager_proxy->removeNode(marcaString);
 		Pose3D posCaja;
 		posCaja.x = -25; posCaja.y = 0; posCaja.z = 80; posCaja.rx = 0; posCaja.ry = 0; posCaja.rz = 0;
@@ -583,7 +623,7 @@ void SpecificWorker::dibujarCaja()
 		planoCaja.px = 0; planoCaja.py = 0; planoCaja.pz = 0; planoCaja.nx = 0; planoCaja.ny = 0; planoCaja.nz = 0; 
 		planoCaja.width = 100; planoCaja.height =100; planoCaja.thickness = 100; planoCaja.texture = "/home/robocomp/robocomp/files/innermodel/tar36h11-10.png";
 		QString marcaPlano = "Plano" + marca;
-		String marcaPlanoString = marcaPlano.toStdString();
+		string marcaPlanoString = marcaPlano.toStdString();
 		innermodelmanager_proxy->addPlane(marcaPlanoString, marcaString, planoCaja);
 	}
 	catch (Ice::Exception &ex)
@@ -593,14 +633,18 @@ void SpecificWorker::dibujarCaja()
 void SpecificWorker::dibujarCajaSuelo()
 {
 	try{
-		innermodelmanager_proxy->removeNode("cajaCogida");
+		QString cajaCogida = "C" + QString::number(caja,10);
+		string cajaCogidaString = cajaCogida.toStdString();
+		innermodelmanager_proxy->removeNode(cajaCogidaString);
 		Pose3D posCaja;
 		posCaja.x = vectorSuelo[0]; posCaja.y = 50; posCaja.z = vectorSuelo[2]; posCaja.rx = 0; posCaja.ry = 0; posCaja.rz = 0;
-		innermodelmanager_proxy->addTransform("cajaSuelo", "static", "world", posCaja);
+		innermodelmanager_proxy->addTransform(cajaCogidaString, "static", "world", posCaja);
 		Plane3D planoCaja;
 		planoCaja.px = 0; planoCaja.py = 0; planoCaja.pz = 0; planoCaja.nx = 0; planoCaja.ny = 0; planoCaja.nz = 0; 
 		planoCaja.width = 100; planoCaja.height =100; planoCaja.thickness = 100; planoCaja.texture = "/home/robocomp/robocomp/files/innermodel/tar36h11-10.png";
-		innermodelmanager_proxy->addPlane("cajaSueloPlano", "cajaSuelo", planoCaja);
+		QString cajaCogidaPlano = "Plano" + cajaCogida;
+		string cajaCogidaPlanoString = cajaCogidaPlano.toStdString();
+		innermodelmanager_proxy->addPlane(cajaCogidaPlanoString, cajaCogidaString, planoCaja);
 	}
 	catch (Ice::Exception &ex)
 	{std::cout << ex << std::cout;}
@@ -614,7 +658,7 @@ void SpecificWorker::aproxCaja()
 			{		
 				differentialrobot_proxy->setSpeedBase(0,0);
 				posicionBrazo(dejar);
-				sleep(4);
+				sleep(3);
 				estado = STATE::CJDEJARCAJA;
 			}
 		}
@@ -635,8 +679,14 @@ void SpecificWorker::dejarCaja()
 	qDebug() << "Dejo la caja";
 	sleep(2);
 	posicionBrazo(recogido);
-	sleep(4);
-	qFatal("Que crack de robot");
+	sleep(1);
+	if(todasColocadas())
+		estado = STATE::CELEBRAR;
+	else
+	{
+		marcaFijada = false;
+		estado = STATE::GIRAR;
+	}
 }
 
 void SpecificWorker::calcularSuelo(){
@@ -652,8 +702,6 @@ void SpecificWorker::celebrar()
 {
 	differentialrobot_proxy->stopBase();
 	qDebug() << "He llegado!";
-	sleep(4);
-	innermodelmanager_proxy->removeNode("cajaSuelo");
 	qFatal("Se acabo");
 }
 

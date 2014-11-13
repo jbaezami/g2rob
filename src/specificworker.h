@@ -112,8 +112,11 @@ private:
 			QMutexLocker m(&mutex);
 			for(auto i: tags)
 			{
-				tt=i;
-				return true;
+				if (i.id >= 10)
+				{
+					tt=i;
+					return true;
+				}
 			}
 			return false;
 		}
@@ -130,7 +133,9 @@ private:
 	void calcularSuelo();
 	bool comprobarMarca(int id);
 	bool ponerMarcaAColocada(int id);
-
+	bool estaEnBusca(int id);
+	bool todasColocadas();
+	
 public:
 	SpecificWorker(MapPrx& mprx, QObject *parent = 0);	
 	~SpecificWorker();
