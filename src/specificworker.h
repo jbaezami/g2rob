@@ -47,9 +47,9 @@ private:
 						, CJGIRAR, CJGIRANDO, CJPARAR, CJAVANZAR, CJPENSAR, CJAPROX, CJDEJARCAJA, CELEBRAR, IDLE};
 	STATE estado;
 	// variables para la marca que busco, la distancia a la marca y la distancia a la que paro
-	int marcaBusco, distanciaMarca, distanciaParada;
+	int marcaBusco, distanciaMarca, distanciaParada, caja;
 	// bool para saber si tengo ya datos de la marca
-	bool enfocado;
+	bool enfocado, marcaFijada;
 	// posicion del robot
 	RoboCompDifferentialRobot::TBaseState posRobot;
 	// variables para giros, velocidad y distancia
@@ -75,6 +75,10 @@ private:
 		QVec getPos()
 		{
 			return pos;
+		}
+		int getID()
+		{
+			return id;
 		}
 		int id;
 		QVec pos;
@@ -103,6 +107,16 @@ private:
 			}
 			return false;
 		}
+		bool existFirst(tag &tt)
+		{
+			QMutexLocker m(&mutex);
+			for(auto i: tags)
+			{
+				tt=i;
+				return true;
+			}
+			return false;
+		}
 		std::vector<tag> tags;
 	};
 	tagslocalT tagslocal, tagslocal1;
@@ -114,8 +128,8 @@ private:
 	void dibujarCaja ();
 	void dibujarCajaSuelo ();
 	void calcularSuelo();
-	bool comprobarMarca(const TMarcas &lista, int id);
-	bool ponerMarcaAColocada(const TMarcas &lista, int id);
+	bool comprobarMarca(int id);
+	bool ponerMarcaAColocada(int id);
 
 public:
 	SpecificWorker(MapPrx& mprx, QObject *parent = 0);	
