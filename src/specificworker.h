@@ -32,6 +32,7 @@ Q_OBJECT
 private:
 	
 	typedef std::vector<std::pair <std::string, float> > TPose;
+	typedef std::vector<std::pair <int, bool> > TMarcas;
 
 	//estados posibles del posRobot
 	// GIRAR: gira hacia uno de los dos lados
@@ -60,6 +61,7 @@ private:
 	QTime reloj;
 	// boolean que indica si ya tengo la marca a la que voy en memoria o no
 	TPose recogido, coger, dejar, cerrarMano, abrirMano, subirCaja, guardoCaja;
+	TMarcas marcas;
 	
 	struct tag
 	{
@@ -112,6 +114,8 @@ private:
 	void dibujarCaja ();
 	void dibujarCajaSuelo ();
 	void calcularSuelo();
+	bool comprobarMarca(const TMarcas &lista, int id);
+	bool ponerMarcaAColocada(const TMarcas &lista, int id);
 
 public:
 	SpecificWorker(MapPrx& mprx, QObject *parent = 0);	

@@ -38,7 +38,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	// distancia a la que me paro
 	distanciaParada = 1600;
 	// marca que quiero localizar
-	marcaBusco = 11;
+	marcaBusco = 10;
 	// posicion respecto a la marca a la que quiero ir
 	marcaRefer.resize(3);
 	marcaRefer[0] = 0; marcaRefer[1] = 0; marcaRefer[2] = -1000;
@@ -49,6 +49,10 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	// intervalo para aplicar al reloj aleatorio para que la espera sea aleatoria no un valor fijo
 	intervalo = qrand()*2200.f/RAND_MAX + 4000;
 	
+	marcas.push_back(std::make_pair<int, bool>(10,false));
+	marcas.push_back(std::make_pair<int, bool>(11,false));
+	marcas.push_back(std::make_pair<int, bool>(12,false));
+	
 	// configuro una posicion para el brazo hacia atrás recogido
 	recogido.push_back(std::make_pair<std::string, float>("shoulder_right_1", 3.14));
 	recogido.push_back(std::make_pair<std::string, float>("shoulder_right_2", -1.4));
@@ -56,6 +60,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	recogido.push_back(std::make_pair<std::string, float>("elbow_right", 2.4));
 	recogido.push_back(std::make_pair<std::string, float>("wrist_right_1", 0));
 	recogido.push_back(std::make_pair<std::string, float>("wrist_right_2", -1));
+	recogido.push_back(std::make_pair<std::string, float>("wrist_right_giro", 0));
 	recogido.push_back(std::make_pair<std::string, float>("finger_right_1", 1));
 	recogido.push_back(std::make_pair<std::string, float>("finger_right_2", -1));
 	
@@ -64,6 +69,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	coger.push_back(std::make_pair<std::string, float>("shoulder_right_2", -0.7));
 	coger.push_back(std::make_pair<std::string, float>("elbow_right", 1));
 	coger.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.1));
+	coger.push_back(std::make_pair<std::string, float>("wrist_right_giro", 0));
 	coger.push_back(std::make_pair<std::string, float>("finger_right_1", 0));
 	coger.push_back(std::make_pair<std::string, float>("finger_right_2", 0));
 	
@@ -78,6 +84,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	subirCaja.push_back(std::make_pair<std::string, float>("shoulder_right_2", -0.7));
 	subirCaja.push_back(std::make_pair<std::string, float>("elbow_right", 1));
 	subirCaja.push_back(std::make_pair<std::string, float>("wrist_right_2", 1.3));
+	subirCaja.push_back(std::make_pair<std::string, float>("wrist_right_giro", 0));
 	
 	//configuro una posicion para cerrar la mano
 	cerrarMano.push_back(std::make_pair<std::string, float>("finger_right_1", -0.4));
@@ -94,6 +101,7 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	guardoCaja.push_back(std::make_pair<std::string, float>("elbow_right", 2.4));
 	guardoCaja.push_back(std::make_pair<std::string, float>("wrist_right_1", 0));
 	guardoCaja.push_back(std::make_pair<std::string, float>("wrist_right_2", -1));
+	guardoCaja.push_back(std::make_pair<std::string, float>("wrist_right_giro", 0));
 	
 	posicionBrazo(recogido);
 }
@@ -232,6 +240,39 @@ void SpecificWorker::posicionBrazo(const TPose &lista)
 	}
 }
 
+// devuelve false si no la hemos movido, true si la hemos colocado
+bool SpecificWorker::comprobarMarca(const TMarcas &lista, int id)
+{
+	try 
+	{
+		for(auto i:lista)
+		{
+			if (i.first == id)
+				return i.second;
+		}
+	} catch (const Ice::Exception &ex) 
+	{
+		std::cout << ex << std::endl;
+	}
+}
+
+bool SpecificWorker::ponerMarcaAColocada(const TMarcas &lista, int id)
+{
+	try 
+	{
+		for(auto i:lista)
+		{
+			if (i.first == id){
+				i.second = true;
+				return true;
+			}
+		}
+		return false;
+	} catch (const Ice::Exception &ex) 
+	{
+		std::cout << ex << std::endl;
+	}
+}
 
 // modulo que comprueba los valores del laser que esten frente al robot (angulo entre 1.2 y -1.2)
 // y aquellos que devuelvan un valor de 400 avisa que posible choque
@@ -373,7 +414,7 @@ void SpecificWorker::avanzar()
 	switch(estado)
 	{
 		case STATE::AVANZAR:
-		if((abs(vectorBase[0]) < 50) && (abs(vectorBase[2]) < 50))
+		if((abs(vectorBase[0]) < 150) && (abs(vectorBase[2]) < 150))
 			estado = STATE::PENSAR;
 		break;
 		case STATE::CJAVANZAR:
@@ -482,8 +523,20 @@ void SpecificWorker::centrarBrazo()
 		moverBrazo(0,1,0,datosMarcaBrazo.getPos()[1]*0.8);
 		sleep(2);
 	}
-	else
-		estado = STATE::BAJARBRAZO;
+	else{
+		//configuro una posicion para cerrar la mano
+		float giro = datosMarcaBrazo.getPos()[5];
+		qDebug() << "giro: " << giro;
+		MotorGoalPosition posicion;
+		try 
+		{
+			posicion.name = "wrist_right_giro";
+			posicion.position = giro;
+			posicion.maxSpeed = 1.f;
+			jointmotor_proxy->setPosition(posicion);
+			estado = STATE::BAJARBRAZO;
+		}catch(Ice::Exception &ex){std::cout << ex << std::cout;}
+	}
 }
 
 void SpecificWorker::bajarBrazo()
