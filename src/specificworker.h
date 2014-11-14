@@ -132,7 +132,7 @@ private:
 	void dibujarCajaSuelo ();
 	void calcularSuelo();
 	bool comprobarMarca(int id);
-	bool ponerMarcaAColocada(int id);
+	bool ponerMarcaAColocada( TMarcas &lista, int id);
 	bool estaEnBusca(int id);
 	bool todasColocadas();
 	

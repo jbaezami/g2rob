@@ -116,7 +116,7 @@ SpecificWorker::~SpecificWorker()
 {
 
 }
-void SpecificWorker::compute( )
+void SpecificWorker::compute()
 {
 	//obtengo los datos de la posicion del robot
 	differentialrobot_proxy->getBaseState(posRobot);
@@ -277,14 +277,16 @@ bool SpecificWorker::estaEnBusca(int id)
 	return false;
 }
 
-bool SpecificWorker::ponerMarcaAColocada(int id)
+bool SpecificWorker::ponerMarcaAColocada( TMarcas &lista, int id)
 {
+	qDebug() << "Pongo a colocada : " << id;
 	try 
 	{
-		for(auto i:marcas)
+		for(auto i:lista)
 		{
 			if (i.first == id){
 				i.second = true;
+				qDebug() << "Cambio Marca: " << i.first << " a " << i.second;
 				return true;
 			}
 		}
@@ -301,8 +303,10 @@ bool SpecificWorker::todasColocadas()
 	{
 		for(auto i:marcas)
 		{
-			if (!i.second)
+			if (!i.second){
+				qDebug() << i.first << " no esta colocada";
 				return false;
+			}
 		}
 	} catch (const Ice::Exception &ex) 
 	{
@@ -412,9 +416,7 @@ void SpecificWorker::girando()
 		}
 	}
 	else{
-		if(tagslocal.existFirst(datosMarca)){
-			marcaBusco = datosMarca.getID();
-			marcaFijada = true;
+		if(tagslocal.existsId(marcaBusco, datosMarca)){
 			if (estado == STATE::GIRANDO)
 				estado = STATE::PARAR;
 			else
@@ -605,7 +607,6 @@ void SpecificWorker::cogerCaja()
 	sleep(2);
 	posicionBrazo(guardoCaja);
 	sleep(2);
-	ponerMarcaAColocada(marcaBusco);
 	marcaBusco = 3;
 	estado = STATE::CJGIRAR;
 }
@@ -677,6 +678,7 @@ void SpecificWorker::dejarCaja()
 	catch( const Ice::Exception &ex)
 	{std::cout << ex << std::endl;}
 	qDebug() << "Dejo la caja";
+	ponerMarcaAColocada(marcas, caja);
 	sleep(2);
 	posicionBrazo(recogido);
 	sleep(1);
