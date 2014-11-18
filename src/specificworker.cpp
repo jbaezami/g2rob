@@ -49,6 +49,8 @@ SpecificWorker::SpecificWorker(MapPrx& mprx, QObject *parent) : GenericWorker(mp
 	// intervalo para aplicar al reloj aleatorio para que la espera sea aleatoria no un valor fijo
 	intervalo = qrand()*2200.f/RAND_MAX + 4000;
 	
+	busqueda = 1;
+	
 	// inicialización para que cuando empiece a buscar la primera vez sea random a derecha o izquierda
 	angulo = qrand()*2.f/RAND_MAX-1;
 	
@@ -204,6 +206,10 @@ void SpecificWorker::compute()
 		case STATE::CELEBRAR:
 			qDebug() << "Celebrar";
 			celebrar(); 
+			break;
+		case STATE::NOQUEDAN:
+			qDebug() << "No quedan";
+			noQuedan();
 			break;
 		case STATE::IDLE: 
 // 			estado para las pruebas;
@@ -372,7 +378,6 @@ void SpecificWorker::expulsar()
 // modulo que gira a un lado o a otro
 void SpecificWorker::girar()
 {	
-	reloj.start();
 	if(angulo>0)
 	{
 		try{	
@@ -404,28 +409,25 @@ void SpecificWorker::girar()
 // busco la marca para dejar de girar cuando la localice
 void SpecificWorker::girando()
 {
-	if (3000 < reloj.elapsed()){
-		
-		if (!marcaFijada)
-		{
-			qDebug() << "Compruebo si veo algo";
-			if((tagslocal.existFirst(datosMarca))&&(estaEnBusca(datosMarca.getID()))&&(!comprobarMarca(datosMarca.getID()))){
-				marcaBusco = datosMarca.getID();
-				marcaFijada = true;
-				if (estado == STATE::GIRANDO)
-					estado = STATE::PARAR;
-				else
-					estado = STATE::CJPARAR;
-			}
+	if (!marcaFijada)
+	{
+		qDebug() << "Compruebo si veo algo";
+		if(tagslocal.existFirst(datosMarca)){
+			marcaBusco = datosMarca.getID();
+			marcaFijada = true;
+			if (estado == STATE::GIRANDO)
+				estado = STATE::PARAR;
+			else
+				estado = STATE::CJPARAR;
 		}
-		else{
-			if(tagslocal.existsId(marcaBusco, datosMarca)){
-				if (estado == STATE::GIRANDO)
-					estado = STATE::PARAR;
-				else
-					estado = STATE::CJPARAR;
-			}	
-		}
+	}
+	else{
+		if(tagslocal.existsId(marcaBusco, datosMarca)){
+			if (estado == STATE::GIRANDO)
+				estado = STATE::PARAR;
+			else
+				estado = STATE::CJPARAR;
+		}	
 	}
 }
 
@@ -521,7 +523,7 @@ void SpecificWorker::pensar()
 		if (estado == STATE::PENSAR)
 		{	
 			posicionBrazo(coger);
-			sleep(1);
+			sleep(3);
 			qDebug() << "Ajustado";
 			estado = STATE::ACERCARSE;
 		}
@@ -682,16 +684,30 @@ void SpecificWorker::dejarCaja()
 	catch( const Ice::Exception &ex)
 	{std::cout << ex << std::endl;}
 	qDebug() << "Dejo la caja";
-	ponerMarcaAColocada(marcas, caja);
 	sleep(2);
 	posicionBrazo(recogido);
 	sleep(1);
-	if(todasColocadas())
-		estado = STATE::CELEBRAR;
+	reloj.start();
+	estado = STATE::NOQUEDAN;
+	
+	// giro 
+	if(angulo>0)
+	{
+		try{	
+			radGiro = -0.3;
+			differentialrobot_proxy->setSpeedBase(0, radGiro);
+		}
+		catch( const Ice::Exception &ex)
+		{ std::cout << ex << std::endl;}
+	}
 	else
 	{
-		marcaFijada = false;
-		estado = STATE::GIRAR;
+		try{
+			radGiro = 0.3;
+			differentialrobot_proxy->setSpeedBase(0, radGiro);
+		}
+		catch( const Ice::Exception &ex)
+		{ std::cout << ex << std::endl;}
 	}
 }
 
@@ -701,6 +717,26 @@ void SpecificWorker::calcularSuelo(){
 		vectorSuelo = inner->transform("world", "arm_right_7");
 	}catch( Ice::Exception &ex )
 	{ std::cout << ex << std::cout;}
+}
+
+void SpecificWorker::noQuedan()
+{
+	if (busqueda == 1){
+		if (3000 < reloj.elapsed())
+			busqueda = 2;
+	}
+	else
+	{ 
+		qDebug() << "Compruebo si veo algo";
+		if(tagslocal.existFirst(datosMarca)){
+			marcaBusco = datosMarca.getID();
+			marcaFijada = true;
+			estado = STATE::PARAR;
+			busqueda = 1;
+		}
+		if (18000 < reloj.elapsed())
+			estado = STATE::CELEBRAR;
+	}
 }
 
 // paro y celebro que he llegado

@@ -44,7 +44,7 @@ private:
 	// CELEBRAR: celebra el exito
 	// IDLE: estado para pruebas
 	enum class STATE {GIRAR, GIRANDO, PARAR, AVANZAR, PENSAR, ACERCARSE, CENTRARBRAZO, BAJARBRAZO, COGERCAJA
-						, CJGIRAR, CJGIRANDO, CJPARAR, CJAVANZAR, CJPENSAR, CJAPROX, CJDEJARCAJA, CELEBRAR, IDLE};
+						, CJGIRAR, CJGIRANDO, CJPARAR, CJAVANZAR, CJPENSAR, CJAPROX, CJDEJARCAJA, CELEBRAR, NOQUEDAN, IDLE};
 	STATE estado;
 	// variables para la marca que busco, la distancia a la marca y la distancia a la que paro
 	int marcaBusco, distanciaMarca, distanciaParada, caja;
@@ -59,6 +59,7 @@ private:
 	QVec marcaRefer, vectorMundo, vectorBase, expulsion, vectorSuelo;
 	// reloj para las temporizaciones
 	QTime reloj;
+	int busqueda;
 	// boolean que indica si ya tengo la marca a la que voy en memoria o no
 	TPose recogido, coger, dejar, cerrarMano, abrirMano, subirCaja, guardoCaja;
 	TMarcas marcas;
@@ -135,6 +136,7 @@ private:
 	bool ponerMarcaAColocada( TMarcas &lista, int id);
 	bool estaEnBusca(int id);
 	bool todasColocadas();
+	void noQuedan();
 	
 public:
 	SpecificWorker(MapPrx& mprx, QObject *parent = 0);	
