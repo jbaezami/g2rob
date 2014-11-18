@@ -372,6 +372,7 @@ void SpecificWorker::expulsar()
 // modulo que gira a un lado o a otro
 void SpecificWorker::girar()
 {	
+	reloj.start();
 	if(angulo>0)
 	{
 		try{	
@@ -403,25 +404,28 @@ void SpecificWorker::girar()
 // busco la marca para dejar de girar cuando la localice
 void SpecificWorker::girando()
 {
-	if (!marcaFijada)
-	{
-		qDebug() << "Compruebo si veo algo";
-		if((tagslocal.existFirst(datosMarca))&&(estaEnBusca(datosMarca.getID()))&&(!comprobarMarca(datosMarca.getID()))){
-			marcaBusco = datosMarca.getID();
-			marcaFijada = true;
-			if (estado == STATE::GIRANDO)
-				estado = STATE::PARAR;
-			else
-				estado = STATE::CJPARAR;
+	if (3000 < reloj.elapsed()){
+		
+		if (!marcaFijada)
+		{
+			qDebug() << "Compruebo si veo algo";
+			if((tagslocal.existFirst(datosMarca))&&(estaEnBusca(datosMarca.getID()))&&(!comprobarMarca(datosMarca.getID()))){
+				marcaBusco = datosMarca.getID();
+				marcaFijada = true;
+				if (estado == STATE::GIRANDO)
+					estado = STATE::PARAR;
+				else
+					estado = STATE::CJPARAR;
+			}
 		}
-	}
-	else{
-		if(tagslocal.existsId(marcaBusco, datosMarca)){
-			if (estado == STATE::GIRANDO)
-				estado = STATE::PARAR;
-			else
-				estado = STATE::CJPARAR;
-		}	
+		else{
+			if(tagslocal.existsId(marcaBusco, datosMarca)){
+				if (estado == STATE::GIRANDO)
+					estado = STATE::PARAR;
+				else
+					estado = STATE::CJPARAR;
+			}	
+		}
 	}
 }
 
