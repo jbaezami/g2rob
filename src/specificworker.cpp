@@ -601,13 +601,14 @@ void SpecificWorker::bajarBrazo()
 void SpecificWorker::cogerCaja()
 {
 	qDebug() << "Cojo la caja";
-// 	try{
-// 		bodyinversekinematics_proxy->setFingers(90000.0f);
-// 	}
-// 	catch( const Ice::Exception &ex)
-// 	{ std::cout << ex << std::endl;}
+	try{
+		bodyinversekinematics_proxy->setFingers(90.0f);
+	}
+	catch( const Ice::Exception &ex)
+	{ std::cout << ex << std::endl;}
+	sleep(1);
 	caja = marcaBusco;
-	posicionBrazo(cerrarMano);
+	//posicionBrazo(cerrarMano);
 	dibujarCaja();
 	posicionBrazo(subirCaja);
 	sleep(2);
